@@ -1,0 +1,152 @@
+[
+  {
+    "id": 1,
+    "name": "Advanced Cardiac Life Support (ACLS)",
+    "department": "Cardiology",
+    "designation": "Senior Consultant"
+  },
+  {
+    "id": 2,
+    "name": "Complex Coronary Interventions",
+    "department": "Cardiology",
+    "designation": "Medical Officer"
+  },
+  {
+    "id": 3,
+    "name": "Neuro-Critical Care Protocols",
+    "department": "Neurology",
+    "designation": "Senior Resident (SR)"
+  },
+  {
+    "id": 4,
+    "name": "Stroke Management & Reperfusion Therapies",
+    "department": "Neurology",
+    "designation": "Junior Resident (JR)"
+  },
+  {
+    "id": 5,
+    "name": "Emergency Triage and Resuscitation",
+    "department": "Emergency Medicine",
+    "designation": "Medical Officer"
+  },
+  {
+    "id": 6,
+    "name": "Trauma Life Support Certification",
+    "department": "Emergency Medicine",
+    "designation": "Staff Nurse"
+  },
+  {
+    "id": 7,
+    "name": "Ventilator Management & Settings",
+    "department": "ICU",
+    "designation": "Senior Resident (SR)"
+  },
+  {
+    "id": 8,
+    "name": "Sepsis Early Goal-Directed Therapy",
+    "department": "ICU",
+    "designation": "Senior Nurse"
+  },
+  {
+    "id": 9,
+    "name": "Advanced MRI Techniques & Safety",
+    "department": "Radiology",
+    "designation": "Senior Consultant"
+  },
+  {
+    "id": 10,
+    "name": "Radiation Protection Protocols",
+    "department": "Radiology",
+    "designation": "Junior Resident (JR)"
+  },
+  {
+    "id": 11,
+    "name": "Neonatal Resuscitation Program (NRP)",
+    "department": "Pediatrics",
+    "designation": "Senior Resident (SR)"
+  },
+  {
+    "id": 12,
+    "name": "Pediatric Advanced Life Support (PALS)",
+    "department": "Pediatrics",
+    "designation": "Medical Officer"
+  },
+  {
+    "id": 13,
+    "name": "Infection Control and Hand Hygiene",
+    "department": "All Departments",
+    "designation": "All Designations"
+  },
+  {
+    "id": 14,
+    "name": "Patient Communication & Ethics",
+    "department": "All Departments",
+    "designation": "All Designations"
+  },
+  {
+    "id": 15,
+    "name": "Surgical Site Infection Prevention",
+    "department": "Surgery",
+    "designation": "Senior Nurse"
+  },
+  {
+    "id": 16,
+    "name": "Laparoscopic Surgery Basics",
+    "department": "Surgery",
+    "designation": "Junior Resident (JR)"
+  },
+  {
+    "id": 17,
+    "name": "High-Risk Obstetrics Management",
+    "department": "Gynaecology & Obstetrics",
+    "designation": "Senior Consultant"
+  },
+  {
+    "id": 18,
+    "name": "Fetal Heart Rate Monitoring",
+    "department": "Gynaecology & Obstetrics",
+    "designation": "Staff Nurse"
+  },
+  {
+    "id": 19,
+    "name": "Joint Replacement Rehabilitation",
+    "department": "Orthopaedics",
+    "designation": "Physiotherapist"
+  },
+  {
+    "id": 20,
+    "name": "Cast Application & Splinting",
+    "department": "Orthopaedics",
+    "designation": "Junior Resident (JR)"
+  },
+  {
+    "id": 21,
+    "name": "Chemotherapy Safe Handling",
+    "department": "Oncology",
+    "designation": "Senior Nurse"
+  },
+  {
+    "id": 22,
+    "name": "Palliative Care Communication",
+    "department": "Oncology",
+    "designation": "Medical Officer"
+  },
+  {
+    "id": 23,
+    "name": "Data Privacy & HIPAA Compliance",
+    "department": "All Departments",
+    "designation": "All Designations"
+  },
+  {
+    "id": 24,
+    "name": "Electronic Health Records (EHR) Navigation",
+    "department": "All Departments",
+    "designation": "Junior Resident (JR)"
+  },
+  {
+    "id": 25,
+    "name": "Basic Life Support (BLS) Recertification",
+    "department": "All Departments",
+    "designation": "Staff Nurse"
+  }
+]

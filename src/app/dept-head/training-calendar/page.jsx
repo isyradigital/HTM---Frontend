@@ -1,5 +1,5 @@
-import { DeptTrainingCalendar } from "@/components/DeptTrainingCalendar";
+import { UniversalTrainingCalendar } from "@/components/UniversalTrainingCalendar";
 
 export default function IcuTrainingCalendarPage() {
-  return <DeptTrainingCalendar department="ICU" />;
+  return <UniversalTrainingCalendar mode="dept" department="ICU" />;
 }

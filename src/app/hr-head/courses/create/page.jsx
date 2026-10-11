@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { initialCourses } from "../page";
 import { saveVideoToDB } from "@/lib/videoDB";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/components/ToastProvider";
 import {
   ArrowLeft, FileText, ImageIcon, Video, HelpCircle, ListOrdered,
   GripVertical, Plus, Trash2, CheckCircle2, ChevronUp, ChevronDown,
@@ -17,19 +18,19 @@ const DESIGNATIONS = [
 ];
 
 const CONTENT_TYPES = [
-  { id: "section", label: "Section / Chapter", icon: FolderOpen, color: "orange" },
-  { id: "paragraph", label: "Paragraph", icon: AlignLeft, color: "blue" },
+  { id: "section", label: "Section / Chapter", icon: FolderOpen, color: "blue" },
+  { id: "paragraph", label: "Paragraph", icon: AlignLeft, color: "indigo" },
   { id: "image", label: "Image / Banner", icon: Img, color: "teal" },
-  { id: "video", label: "Video", icon: Video, color: "indigo" },
+  { id: "video", label: "Video", icon: Video, color: "purple" },
   { id: "mcq", label: "MCQ Quiz", icon: ListOrdered, color: "emerald" },
   { id: "qa", label: "Q&A", icon: HelpCircle, color: "rose" },
 ];
 
 const COLOR_MAP = {
-  orange: { badge: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" },
-  blue: { badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  teal: { badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400" },
+  blue: { badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
   indigo: { badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400" },
+  teal: { badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400" },
+  purple: { badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" },
   emerald: { badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
   rose: { badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" },
 };
@@ -148,25 +149,173 @@ function TimelineItem({ item, index, total, onRemove, onMoveUp, onMoveDown, isSe
   );
 }
 
+// ── Section Accordion Item Component ─────────────────────────────────────────
+function SectionAccordionItem({
+  section,
+  index,
+  totalSections,
+  isExpanded,
+  onToggleExpand,
+  isActiveSection,
+  onSetActiveSection,
+  onRemoveSection,
+  onMoveSectionUp,
+  onMoveSectionDown,
+  onRemoveChild,
+  onMoveChildUp,
+  onMoveChildDown,
+  selectedId,
+  onSelectId,
+}) {
+  const children = section.children || [];
+  const sectionTitle = typeof section.data === "string" ? section.data : "Section";
+
+  return (
+    <div
+      className={`rounded-2xl border transition-all overflow-hidden ${
+        isActiveSection
+          ? "border-blue-500 bg-blue-50/40 dark:bg-blue-950/20 shadow-md shadow-blue-500/5 ring-1 ring-blue-500/20"
+          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300"
+      }`}
+    >
+      {/* Chapter Header */}
+      <div
+        onClick={onToggleExpand}
+        className={`group relative flex items-center gap-2 p-3 cursor-pointer select-none transition-colors ${
+          isActiveSection
+            ? "hover:bg-blue-50/70 dark:hover:bg-blue-900/30"
+            : "hover:bg-slate-50 dark:hover:bg-slate-700/50"
+        }`}
+      >
+        {/* Reorder Section buttons */}
+        <div className="flex flex-col items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+          <button
+            type="button"
+            disabled={index === 0}
+            onClick={onMoveSectionUp}
+            className="p-0.5 disabled:opacity-20 text-slate-400 hover:text-blue-600 transition-colors"
+          >
+            <ChevronUp className="w-3.5 h-3.5" />
+          </button>
+          <GripVertical className="w-3.5 h-3.5 text-slate-300" />
+          <button
+            type="button"
+            disabled={index === totalSections - 1}
+            onClick={onMoveSectionDown}
+            className="p-0.5 disabled:opacity-20 text-slate-400 hover:text-blue-600 transition-colors"
+          >
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Section title & Badges */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+              Section / Chapter
+            </span>
+            <span className="text-[10px] font-semibold text-slate-400">#{index + 1}</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+              {children.length} {children.length === 1 ? "item" : "items"}
+            </span>
+            {isActiveSection && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-600 text-white shadow-xs">
+                Active target
+              </span>
+            )}
+          </div>
+          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+            {sectionTitle}
+          </p>
+        </div>
+
+        {/* Right side controls */}
+        <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+          <button
+            type="button"
+            title={isActiveSection ? "Currently active for adding new content" : "Target this chapter for adding content"}
+            onClick={onSetActiveSection}
+            className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all ${
+              isActiveSection
+                ? "bg-blue-600 border-blue-600 text-white shadow-sm shadow-blue-500/20"
+                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600"
+            }`}
+          >
+            {isActiveSection ? "Selected" : "Add into"}
+          </button>
+
+          <button
+            type="button"
+            title="Delete Chapter"
+            onClick={onRemoveSection}
+            className="p-1 text-slate-400 hover:text-red-500 transition-all rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Accordion Chevron */}
+          <div className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Nested Children (Dropdown / Accordion Body) */}
+      {isExpanded && (
+        <div className="border-t border-slate-100 dark:border-slate-700/60 bg-slate-50/70 dark:bg-slate-900/50 p-2.5 space-y-2">
+          {children.length === 0 ? (
+            <div className="py-4 text-center text-[11px] font-medium text-slate-400 italic">
+              No content yet in this chapter.<br />
+              Select content type & click &quot;Add to Timeline&quot;.
+            </div>
+          ) : (
+            children.map((child, cIdx) => (
+              <TimelineItem
+                key={child.id}
+                item={child}
+                index={cIdx}
+                total={children.length}
+                isSelected={selectedId === child.id}
+                onSelect={() => onSelectId(child.id)}
+                onRemove={() => onRemoveChild(child.id)}
+                onMoveUp={() => onMoveChildUp(cIdx)}
+                onMoveDown={() => onMoveChildDown(cIdx)}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function CreateCoursePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
+  const toast = useToast();
 
   // Tabs
   const [activeTab, setActiveTab] = useState("details");
 
   // Course Details
   const [courseDetails, setCourseDetails] = useState({ title: "", code: "", designation: "", description: "" });
+  const [bannerImage, setBannerImage] = useState(null); // base64 string
 
   // Content Builder
-  const [contentType, setContentType] = useState("paragraph");
+  const [contentType, setContentType] = useState("section");
   const [currentData, setCurrentData] = useState(null);
 
-  // Timeline
+  // Timeline (stores top-level items and sections with children)
   const [timeline, setTimeline] = useState([]);
-  const [selectedIdx, setSelectedIdx] = useState(null);
+  const [activeSectionId, setActiveSectionId] = useState(null);
+  const [expandedSections, setExpandedSections] = useState({});
+  const [selectedId, setSelectedId] = useState(null);
 
   useEffect(() => {
     if (editId) {
@@ -180,10 +329,52 @@ export default function CreateCoursePage() {
           designation: found.designation || "",
           description: found.description || "",
         });
-        setTimeline(found.timeline || []);
+
+        // Normalize loaded timeline (migrate flat timeline if needed)
+        const rawTimeline = found.timeline || [];
+        const normalized = [];
+        let curSec = null;
+
+        for (const item of rawTimeline) {
+          if (item.type === "section") {
+            curSec = {
+              ...item,
+              children: Array.isArray(item.children) ? [...item.children] : []
+            };
+            normalized.push(curSec);
+          } else if (curSec && !Array.isArray(curSec.children.find(c => c.id === item.id))) {
+            // If item wasn't inside children, but follows a section in a legacy flat array
+            if (!normalized.some(top => top.id === item.id)) {
+              curSec.children.push(item);
+            }
+          } else {
+            normalized.push(item);
+          }
+        }
+
+        setTimeline(normalized);
+
+        // Auto-expand all sections
+        const exp = {};
+        normalized.forEach(item => {
+          if (item.type === "section") exp[item.id] = true;
+        });
+        setExpandedSections(exp);
+
+        const lastSec = [...normalized].reverse().find(t => t.type === "section");
+        if (lastSec) setActiveSectionId(lastSec.id);
+
+        if (found.image) setBannerImage(found.image); // restore banner
       }
     }
   }, [editId]);
+
+  const toggleSectionExpand = (sectionId) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+  };
 
   const handleAddContent = () => {
     const isEmpty =
@@ -191,15 +382,71 @@ export default function CreateCoursePage() {
       (typeof currentData === "string" && !currentData.trim()) ||
       (typeof currentData === "object" && !currentData.body?.trim() && !currentData.question?.trim() && !currentData.name) ||
       (currentData instanceof File === false && typeof currentData === "object" && Object.keys(currentData).length === 0);
-    if (isEmpty) return alert("Please add content before adding to timeline.");
+    if (isEmpty) return toast.warning("Please add content before adding to timeline.", { title: "Incomplete Content" });
 
-    setTimeline(prev => [...prev, { id: Date.now(), type: contentType, data: currentData }]);
+    const newItemId = Date.now();
+
+    if (contentType === "section") {
+      // Create new Chapter / Section
+      const newSection = {
+        id: newItemId,
+        type: "section",
+        data: currentData,
+        children: []
+      };
+
+      setTimeline(prev => [...prev, newSection]);
+      setActiveSectionId(newItemId);
+      setExpandedSections(prev => ({ ...prev, [newItemId]: true }));
+      toast.success("New chapter created and set as active target.", { title: "Chapter Added" });
+      // Set default content type to paragraph for convenient next input
+      setContentType("paragraph");
+      setCurrentData(null);
+      return;
+    }
+
+    // Non-section content: Add inside active section if exists, otherwise at top-level
+    const newItem = { id: newItemId, type: contentType, data: currentData };
+
+    setTimeline(prev => {
+      // Find if we have an active section
+      const targetSecId = activeSectionId || [...prev].reverse().find(t => t.type === "section")?.id;
+
+      if (targetSecId) {
+        // Automatically make sure this section is marked active & expanded
+        return prev.map(item => {
+          if (item.id === targetSecId && item.type === "section") {
+            return {
+              ...item,
+              children: [...(item.children || []), newItem]
+            };
+          }
+          return item;
+        });
+      }
+
+      // No section exists yet, add to top-level timeline
+      return [...prev, newItem];
+    });
+
+    if (activeSectionId) {
+      setExpandedSections(prev => ({ ...prev, [activeSectionId]: true }));
+    }
+
+    toast.success("Content block added to timeline.", { title: "Block Added" });
     setCurrentData(null);
   };
 
-  const removeItem = (id) => setTimeline(prev => prev.filter(t => t.id !== id));
+  // Remove top-level item or entire section
+  const removeTopLevelItem = (id) => {
+    setTimeline(prev => prev.filter(t => t.id !== id));
+    if (activeSectionId === id) {
+      setActiveSectionId(null);
+    }
+  };
 
-  const moveItem = (idx, dir) => {
+  // Move top-level item
+  const moveTopLevelItem = (idx, dir) => {
     setTimeline(prev => {
       const arr = [...prev];
       const newIdx = idx + dir;
@@ -207,16 +454,59 @@ export default function CreateCoursePage() {
       [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
       return arr;
     });
-    setSelectedIdx(idx + dir);
+  };
+
+  // Remove a child inside a section
+  const removeChildItem = (sectionId, childId) => {
+    setTimeline(prev =>
+      prev.map(item => {
+        if (item.id === sectionId && item.children) {
+          return {
+            ...item,
+            children: item.children.filter(c => c.id !== childId)
+          };
+        }
+        return item;
+      })
+    );
+  };
+
+  // Reorder child items inside a section
+  const moveChildItem = (sectionId, childIdx, dir) => {
+    setTimeline(prev =>
+      prev.map(item => {
+        if (item.id === sectionId && item.children) {
+          const arr = [...item.children];
+          const newIdx = childIdx + dir;
+          if (newIdx < 0 || newIdx >= arr.length) return item;
+          [arr[childIdx], arr[newIdx]] = [arr[newIdx], arr[childIdx]];
+          return { ...item, children: arr };
+        }
+        return item;
+      })
+    );
   };
 
   const saveCourse = async () => {
-    if (!courseDetails.title) return alert("Please enter a course title.");
-    if (timeline.length === 0) return alert("Please add at least one content block.");
+    if (!courseDetails.title) return toast.warning("Please enter a course title.", { title: "Title Required" });
+    if (timeline.length === 0) return toast.warning("Please add at least one content block.", { title: "Empty Timeline" });
 
     // Process timeline: save base64 videos to IndexedDB, store only the key
     const processedTimeline = await Promise.all(
       timeline.map(async (item) => {
+        if (item.type === "section" && Array.isArray(item.children)) {
+          const processedChildren = await Promise.all(
+            item.children.map(async (child) => {
+              if (child.type === "video" && typeof child.data === "string" && child.data.startsWith("data:video")) {
+                const videoKey = await saveVideoToDB(child.data);
+                return { ...child, data: videoKey };
+              }
+              return child;
+            })
+          );
+          return { ...item, children: processedChildren };
+        }
+
         if (item.type === "video" && typeof item.data === "string" && item.data.startsWith("data:video")) {
           const videoKey = await saveVideoToDB(item.data);
           return { ...item, data: videoKey }; // store IDB key instead of base64
@@ -235,6 +525,7 @@ export default function CreateCoursePage() {
       status: "Active",
       colorScheme: schemes[Math.floor(Math.random() * schemes.length)],
       timeline: processedTimeline,
+      image: bannerImage || null, // ← banner image saved here
     };
 
     try {
@@ -252,12 +543,12 @@ export default function CreateCoursePage() {
         localStorage.setItem("hospital_courses", JSON.stringify([...existing, newCourse]));
       }
     } catch (e) {
-      alert("Storage quota exceeded even after video optimization. Please remove some large images.");
+      toast.error("Storage quota exceeded even after video optimization. Please remove some large images.", { title: "Storage Error" });
       return;
     }
 
     window.dispatchEvent(new Event("storage"));
-    alert(editId ? "Course Updated Successfully!" : "Course Published Successfully!");
+    toast.success(editId ? "Course updated successfully!" : "Course published successfully!", { title: "Course Saved" });
     router.push("/hr-head/courses");
   };
 
@@ -299,7 +590,7 @@ export default function CreateCoursePage() {
 
             {/* ──────────── DETAILS TAB ──────────── */}
             {activeTab === "details" && (
-              <div className="space-y-6 max-w-2xl">
+              <div className="space-y-6 w-full">
                 {/* Course Title */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Course Title *</label>
@@ -344,12 +635,38 @@ export default function CreateCoursePage() {
                 {/* Banner Upload */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Course Banner Image</label>
-                  <label className="flex flex-col items-center justify-center w-full h-36 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 hover:border-blue-400 transition-all cursor-pointer group">
-                    <ImageIcon className="w-8 h-8 text-slate-300 group-hover:text-blue-400 transition-colors mb-2" />
-                    <span className="text-sm font-semibold text-slate-500 group-hover:text-blue-500">Click to upload banner</span>
-                    <span className="text-xs text-slate-400 mt-0.5">PNG, JPG up to 5MB</span>
-                    <input type="file" accept="image/*" className="hidden" />
+                  <label className="flex flex-col items-center justify-center w-full h-36 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 hover:border-blue-400 transition-all cursor-pointer group overflow-hidden relative">
+                    {bannerImage ? (
+                      <>
+                        <img src={bannerImage} alt="Banner preview" className="absolute inset-0 w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ImageIcon className="w-6 h-6 text-white mb-1" />
+                          <span className="text-xs font-semibold text-white">Change banner</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <ImageIcon className="w-8 h-8 text-slate-300 group-hover:text-blue-400 transition-colors mb-2" />
+                        <span className="text-sm font-semibold text-slate-500 group-hover:text-blue-500">Click to upload banner</span>
+                        <span className="text-xs text-slate-400 mt-0.5">PNG, JPG up to 5MB</span>
+                      </>
+                    )}
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={e => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (evt) => setBannerImage(evt.target.result);
+                          reader.readAsDataURL(file);
+                        }
+                      }} />
                   </label>
+                  {bannerImage && (
+                    <button type="button" onClick={() => setBannerImage(null)}
+                      className="text-xs font-bold text-red-500 hover:underline">
+                      Remove banner
+                    </button>
+                  )}
                 </div>
 
                 <button onClick={() => setActiveTab("content")}
@@ -361,7 +678,7 @@ export default function CreateCoursePage() {
 
             {/* ──────────── CONTENT BUILDER TAB ──────────── */}
             {activeTab === "content" && (
-              <div className="space-y-6 max-w-2xl">
+              <div className="space-y-6 w-full">
 
                 {/* Content Type Selector */}
                 <div>
@@ -496,6 +813,30 @@ export default function CreateCoursePage() {
                     <QABuilder value={currentData} onChange={setCurrentData} />
                   )}
 
+                  {/* Active Section Context Banner */}
+                  {contentType !== "section" && (
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 text-xs">
+                      <div className="flex items-center gap-2.5">
+                        <FolderOpen className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                        <div>
+                          <span className="font-semibold text-slate-500 dark:text-slate-400">Target Chapter: </span>
+                          <span className="font-bold text-blue-700 dark:text-blue-300">
+                            {timeline.find(t => t.id === activeSectionId && t.type === "section")
+                              ? (timeline.find(t => t.id === activeSectionId)?.data || "Untitled Section")
+                              : (timeline.find(t => t.type === "section")
+                                  ? `${[...timeline].reverse().find(t => t.type === "section")?.data} (Latest)`
+                                  : "None (Will be added at top-level)")}
+                          </span>
+                        </div>
+                      </div>
+                      {timeline.some(t => t.type === "section") && (
+                        <span className="text-[10px] text-blue-600/70 dark:text-blue-400/70 font-medium hidden sm:inline">
+                          Content will be placed inside this chapter
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex justify-end pt-2">
                     <button onClick={handleAddContent}
                       className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5">
@@ -514,37 +855,70 @@ export default function CreateCoursePage() {
 
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 shrink-0">
             <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <ListOrdered className="w-4 h-4 text-blue-500" /> Course Timeline
+              <ListOrdered className="w-4 h-4 text-blue-600" /> Course Timeline
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">{timeline.length} content block{timeline.length !== 1 ? "s" : ""} added</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {timeline.reduce((acc, it) => acc + (it.type === "section" ? (it.children?.length || 0) : 1), 0)} content item{timeline.length !== 1 ? "s" : ""} across {timeline.filter(t => t.type === "section").length} chapter{timeline.filter(t => t.type === "section").length !== 1 ? "s" : ""}
+            </p>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 themed-scroll">
+          <div className="flex-1 overflow-y-auto p-3 space-y-2.5 themed-scroll">
             {timeline.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-slate-400 dark:text-slate-600 py-12 opacity-60">
                 <ListOrdered className="w-10 h-10 mb-3" />
-                <p className="text-xs font-semibold text-center leading-relaxed">Timeline is empty.<br />Add content blocks from the builder.</p>
+                <p className="text-xs font-semibold text-center leading-relaxed">
+                  Timeline is empty.<br />Start by creating a Section / Chapter or content block.
+                </p>
               </div>
             ) : (
-              timeline.map((item, idx) => (
-                <TimelineItem
-                  key={item.id}
-                  item={item}
-                  index={idx}
-                  total={timeline.length}
-                  isSelected={selectedIdx === idx}
-                  onSelect={() => setSelectedIdx(idx)}
-                  onRemove={() => removeItem(item.id)}
-                  onMoveUp={() => moveItem(idx, -1)}
-                  onMoveDown={() => moveItem(idx, 1)}
-                />
-              ))
+              timeline.map((item, idx) => {
+                if (item.type === "section") {
+                  return (
+                    <SectionAccordionItem
+                      key={item.id}
+                      section={item}
+                      index={idx}
+                      totalSections={timeline.length}
+                      isExpanded={!!expandedSections[item.id]}
+                      onToggleExpand={() => toggleSectionExpand(item.id)}
+                      isActiveSection={activeSectionId === item.id}
+                      onSetActiveSection={() => setActiveSectionId(item.id)}
+                      onRemoveSection={() => removeTopLevelItem(item.id)}
+                      onMoveSectionUp={() => moveTopLevelItem(idx, -1)}
+                      onMoveSectionDown={() => moveTopLevelItem(idx, 1)}
+                      onRemoveChild={(childId) => removeChildItem(item.id, childId)}
+                      onMoveChildUp={(childIdx) => moveChildItem(item.id, childIdx, -1)}
+                      onMoveChildDown={(childIdx) => moveChildItem(item.id, childIdx, 1)}
+                      selectedId={selectedId}
+                      onSelectId={setSelectedId}
+                    />
+                  );
+                }
+
+                return (
+                  <TimelineItem
+                    key={item.id}
+                    item={item}
+                    index={idx}
+                    total={timeline.length}
+                    isSelected={selectedId === item.id}
+                    onSelect={() => setSelectedId(item.id)}
+                    onRemove={() => removeTopLevelItem(item.id)}
+                    onMoveUp={() => moveTopLevelItem(idx, -1)}
+                    onMoveDown={() => moveTopLevelItem(idx, 1)}
+                  />
+                );
+              })
             )}
           </div>
 
           <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
             <button onClick={saveCourse}
-              className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${timeline.length > 0 && courseDetails.title ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20 hover:-translate-y-0.5" : "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"}`}>
+              className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                timeline.length > 0 && courseDetails.title
+                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 hover:-translate-y-0.5 active:translate-y-0"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+              }`}>
               <CheckCircle2 className="w-4 h-4" /> Publish Course
             </button>
           </div>

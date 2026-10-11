@@ -11,6 +11,11 @@ export function Navbar() {
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const [standardUser, setStandardUser] = useState({
+    id: "WF001",
+    name: "Dr. Rajesh Sharma",
+    designation: "Senior Consultant",
+  });
 
   // Detect role from current URL path
   let currentRoleLabel = "HR Head";
@@ -22,12 +27,19 @@ export function Navbar() {
     currentRoleLabel = "Dept Head (ICU)";
     currentUserName = "Sarah Jenkins";
   } else if (pathname.startsWith("/user")) {
-    currentRoleLabel = "Standard User";
-    currentUserName = "John Doe";
+    currentRoleLabel = standardUser.designation;
+    currentUserName = standardUser.name;
   }
 
   useEffect(() => {
     setMounted(true);
+    const savedUser = localStorage.getItem("current_standard_user");
+    if (savedUser) {
+      const parsed = JSON.parse(savedUser);
+      if (!parsed.id) parsed.id = "WF001";
+      setStandardUser(parsed);
+      localStorage.setItem("current_standard_user", JSON.stringify(parsed));
+    }
   }, []);
 
   return (
@@ -70,7 +82,7 @@ export function Navbar() {
           <div className="flex items-center gap-3 cursor-pointer group ml-2">
             <Avatar className="h-10 w-10 shadow-sm">
               <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUserName.replace(" ", "")}`} alt={currentUserName} />
-              <AvatarFallback>MN</AvatarFallback>
+              <AvatarFallback>{currentUserName.substring(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="hidden flex-col items-start sm:flex">
               <span className="text-sm font-bold text-slate-800 dark:text-white group-hover:text-blue-600 transition-colors">{currentUserName}</span>

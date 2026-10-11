@@ -6,7 +6,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { loadVideoFromDB } from "@/lib/videoDB";
 import {
   ArrowLeft, BookOpen, FileText, ImageIcon, Video,
-  ListOrdered, HelpCircle, CheckCircle2, Circle, Users, Tag, FolderOpen
+  ListOrdered, HelpCircle, CheckCircle2, Circle, Users, Tag, FolderOpen,
+  ChevronDown, ChevronUp
 } from "lucide-react";
 
 // ─── Same initial data as courses page (fallback for demo courses) ───────────
@@ -71,19 +72,19 @@ function ProgressCircle({ percent, size = 120, stroke = 10, color = "#2563eb" })
 
 // ─── Content Block renderers ─────────────────────────────────────────────────
 const TYPE_META = {
-  section:   { icon: FolderOpen,  color: "orange",  label: "Section / Chapter" },
-  paragraph: { icon: FileText,    color: "blue",    label: "Paragraph" },
+  section:   { icon: FolderOpen,  color: "blue",    label: "Section / Chapter" },
+  paragraph: { icon: FileText,    color: "indigo",  label: "Paragraph" },
   image:     { icon: ImageIcon,   color: "teal",    label: "Image"     },
-  video:     { icon: Video,       color: "indigo",  label: "Video"     },
+  video:     { icon: Video,       color: "purple",  label: "Video"     },
   mcq:       { icon: ListOrdered, color: "emerald", label: "MCQ Quiz"  },
   qa:        { icon: HelpCircle,  color: "rose",    label: "Q&A"       },
 };
 
 const BADGE = {
-  orange:  "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  blue:    "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  teal:    "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+  blue:    "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
   indigo:  "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  teal:    "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+  purple:  "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
   emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   rose:    "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
 };
@@ -91,7 +92,7 @@ const BADGE = {
 function ContentBlock({ item, index, isCompleted, onToggle }) {
   const meta = TYPE_META[item.type] || TYPE_META.paragraph;
   const Icon = meta.icon;
-  const badge = BADGE[meta.color];
+  const badge = BADGE[meta.color] || BADGE.blue;
 
   // Local state for MCQ selections
   const [selectedOption, setSelectedOption] = React.useState(null);
@@ -133,8 +134,8 @@ function ContentBlock({ item, index, isCompleted, onToggle }) {
       {/* Block Content */}
       <div className="flex-1 flex flex-col px-5 py-5 min-h-0">
         {item.type === "section" && (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-gradient-to-br from-orange-50 to-white dark:from-orange-900/20 dark:to-slate-900 rounded-xl border border-orange-100 dark:border-orange-800/30">
-            <FolderOpen className="w-16 h-16 text-orange-400 mb-4 opacity-50" />
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-slate-900 rounded-xl border border-blue-100 dark:border-blue-900/40">
+            <FolderOpen className="w-16 h-16 text-blue-500 mb-4 opacity-60" />
             <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight leading-snug">
               {typeof item.data === "string" ? item.data : "Section"}
             </h2>
@@ -283,6 +284,7 @@ export default function CourseViewPage() {
   const [course, setCourse] = useState(null);
   const [completed, setCompleted] = useState({}); // { blockId: true/false }
   const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
+  const [expandedSections, setExpandedSections] = useState({});
 
   useEffect(() => {
     // Try localStorage first (published courses)
@@ -296,10 +298,92 @@ export default function CourseViewPage() {
     setCompleted(progress);
   }, [id]);
 
+  const rawTimeline = course?.timeline || [];
+
+  // Group into chapters and their items (supporting both nested structure and legacy flat structure)
+  const structuredChapters = React.useMemo(() => {
+    const chapters = [];
+    let curChapter = null;
+    let globalIndex = 0;
+
+    rawTimeline.forEach(item => {
+      if (item.type === "section") {
+        curChapter = {
+          id: item.id,
+          type: "section",
+          data: item.data,
+          globalIndex: globalIndex++,
+          items: []
+        };
+        chapters.push(curChapter);
+
+        // If children array exists
+        if (Array.isArray(item.children)) {
+          item.children.forEach(child => {
+            curChapter.items.push({
+              ...child,
+              globalIndex: globalIndex++,
+              parentSection: item.data,
+            });
+          });
+        }
+      } else {
+        if (curChapter && !Array.isArray(curChapter.items.find(c => c.id === item.id))) {
+          curChapter.items.push({
+            ...item,
+            globalIndex: globalIndex++,
+            parentSection: curChapter.data,
+          });
+        } else {
+          // Top-level item without a preceding section
+          chapters.push({
+            id: item.id,
+            type: item.type,
+            data: item.data,
+            globalIndex: globalIndex++,
+            isStandAlone: true,
+          });
+        }
+      }
+    });
+
+    return chapters;
+  }, [rawTimeline]);
+
+  // Flattened array for pagination & active item display
+  const flattenedTimeline = React.useMemo(() => {
+    const list = [];
+    structuredChapters.forEach(group => {
+      if (group.type === "section") {
+        list.push({ id: group.id, type: group.type, data: group.data });
+        (group.items || []).forEach(child => list.push(child));
+      } else {
+        list.push(group);
+      }
+    });
+    return list;
+  }, [structuredChapters]);
+
+  // Auto-expand all chapters initially
+  useEffect(() => {
+    const exp = {};
+    structuredChapters.forEach(g => {
+      if (g.type === "section") exp[g.id] = true;
+    });
+    setExpandedSections(exp);
+  }, [structuredChapters]);
+
   const toggleComplete = (blockId) => {
     const updated = { ...completed, [blockId]: !completed[blockId] };
     setCompleted(updated);
     localStorage.setItem(`course_progress_${id}`, JSON.stringify(updated));
+  };
+
+  const toggleSection = (secId) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [secId]: !prev[secId]
+    }));
   };
 
   if (!course) {
@@ -314,13 +398,14 @@ export default function CourseViewPage() {
     );
   }
 
-  const timeline = course.timeline || [];
-  const total = timeline.length;
+
+
+  const total = flattenedTimeline.length;
   const doneCount = Object.values(completed).filter(Boolean).length;
   const percent = total > 0 ? Math.round((doneCount / total) * 100) : 0;
 
   const PROGRESS_COLOR = percent === 100 ? "#10b981" : percent > 50 ? "#2563eb" : "#f59e0b";
-  const currentItem = timeline[currentModuleIndex];
+  const currentItem = flattenedTimeline[currentModuleIndex];
 
   return (
     <div className="flex-1 flex flex-col w-full h-full overflow-hidden space-y-6 bg-transparent p-4 md:p-6 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
@@ -455,18 +540,180 @@ export default function CourseViewPage() {
 
           {/* Block Checklist */}
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-lg shadow-blue-500/5 p-5 shrink-0">
-            <h3 className="font-bold text-slate-800 dark:text-white text-sm mb-3">Content Checklist</h3>
-            <div className="space-y-2">
-              {(course.timeline || []).map((item, idx) => {
-                const meta = TYPE_META[item.type] || TYPE_META.paragraph;
-                return (
-                  <div key={item.id} className={`flex items-center gap-2.5 p-2 rounded-xl transition-all ${completed[item.id] ? "bg-emerald-50 dark:bg-emerald-900/20" : "bg-slate-50 dark:bg-slate-800"}`}>
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border-2 transition-all ${completed[item.id] ? "bg-emerald-500 border-emerald-500" : "border-slate-300 dark:border-slate-600"}`}>
-                      {completed[item.id] && <CheckCircle2 className="w-3 h-3 text-white" />}
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-slate-800 dark:text-white text-sm">Content Checklist</h3>
+              <span className="text-[11px] font-semibold text-slate-400">
+                {doneCount}/{total} done
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              {structuredChapters.map((group, gIdx) => {
+                // If it's a section / chapter container with dropdown
+                if (group.type === "section") {
+                  const isExpanded = !!expandedSections[group.id];
+                  const childItems = group.items || [];
+                  const isSectionActive = currentModuleIndex === group.globalIndex;
+                  const isSectionDone = !!completed[group.id];
+                  const sectionCompletedCount = childItems.filter(c => !!completed[c.id]).length;
+
+                  return (
+                    <div
+                      key={group.id}
+                      className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-50/50 dark:bg-slate-800/40 transition-all"
+                    >
+                      {/* Chapter Dropdown Header */}
+                      <div
+                        onClick={() => toggleSection(group.id)}
+                        className="flex items-center gap-2 p-2.5 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-slate-700/50 transition-colors select-none"
+                      >
+                        {/* Checkbox for section completion itself */}
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleComplete(group.id);
+                          }}
+                          title="Mark Section Done"
+                          className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border-2 transition-all cursor-pointer ${
+                            isSectionDone ? "bg-emerald-500 border-emerald-500" : "border-slate-300 dark:border-slate-600 hover:border-emerald-400"
+                          }`}
+                        >
+                          {isSectionDone && <CheckCircle2 className="w-3 h-3 text-white" />}
+                        </div>
+
+                        {/* Title and click to view section intro */}
+                        <div
+                          className="flex-1 min-w-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentModuleIndex(group.globalIndex);
+                          }}
+                        >
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                              Chapter
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400">
+                              {childItems.length} {childItems.length === 1 ? "item" : "items"}
+                            </span>
+                            {childItems.length > 0 && (
+                              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                ({sectionCompletedCount}/{childItems.length})
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            className={`text-xs font-bold block truncate mt-0.5 hover:text-blue-600 transition-colors ${
+                              isSectionActive ? "text-blue-600 dark:text-blue-400 underline font-extrabold" : "text-slate-800 dark:text-slate-200"
+                            }`}
+                          >
+                            {typeof group.data === "string" ? group.data : "Chapter"}
+                          </span>
+                        </div>
+
+                        {/* Chevron dropdown icon */}
+                        <div className="p-1 text-slate-400 hover:text-blue-600 transition-colors">
+                          {isExpanded ? (
+                            <ChevronUp className="w-4 h-4 text-blue-500" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Dropdown Body: Nested Chapter Content items */}
+                      {isExpanded && (
+                        <div className="border-t border-slate-100 dark:border-slate-700/60 bg-white dark:bg-slate-900/60 p-2 space-y-1.5">
+                          {childItems.length === 0 ? (
+                            <p className="text-[11px] text-slate-400 italic px-2 py-1 text-center">
+                              No items in this chapter
+                            </p>
+                          ) : (
+                            childItems.map((child) => {
+                              const meta = TYPE_META[child.type] || TYPE_META.paragraph;
+                              const isChildActive = currentModuleIndex === child.globalIndex;
+                              const isChildDone = !!completed[child.id];
+
+                              return (
+                                <div
+                                  key={child.id}
+                                  onClick={() => setCurrentModuleIndex(child.globalIndex)}
+                                  className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-all ${
+                                    isChildActive
+                                      ? "ring-2 ring-blue-500/40 bg-blue-50 dark:bg-blue-900/30"
+                                      : isChildDone
+                                      ? "bg-emerald-50/60 dark:bg-emerald-950/20"
+                                      : "bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                                  }`}
+                                >
+                                  {/* Child Checkbox */}
+                                  <div
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleComplete(child.id);
+                                    }}
+                                    className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 border-2 transition-all cursor-pointer ${
+                                      isChildDone ? "bg-emerald-500 border-emerald-500" : "border-slate-300 dark:border-slate-600 hover:border-emerald-400"
+                                    }`}
+                                  >
+                                    {isChildDone && <CheckCircle2 className="w-2.5 h-2.5 text-white" />}
+                                  </div>
+
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate">
+                                        {meta.label}
+                                      </span>
+                                    </div>
+                                    <p className={`text-[10px] truncate ${isChildDone ? "line-through text-slate-400" : "text-slate-500 dark:text-slate-400"}`}>
+                                      {typeof child.data === "object" && child.data !== null
+                                        ? (child.data.heading || child.data.question || child.data.body || "Item content")
+                                        : (typeof child.data === "string" ? child.data : "Content block")}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <span className={`text-xs font-semibold truncate ${completed[item.id] ? "text-emerald-700 dark:text-emerald-400 line-through" : "text-slate-600 dark:text-slate-400"}`}>
-                      Block {idx + 1} — {meta.label}
-                    </span>
+                  );
+                }
+
+                // Standalone top-level item without a section
+                const meta = TYPE_META[group.type] || TYPE_META.paragraph;
+                const isItemActive = currentModuleIndex === group.globalIndex;
+                const isItemDone = !!completed[group.id];
+
+                return (
+                  <div
+                    key={group.id}
+                    onClick={() => setCurrentModuleIndex(group.globalIndex)}
+                    className={`flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-all ${
+                      isItemActive
+                        ? "ring-2 ring-blue-500/40 bg-blue-50/70 dark:bg-blue-900/30"
+                        : isItemDone
+                        ? "bg-emerald-50/60 dark:bg-emerald-950/20"
+                        : "bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                    }`}
+                  >
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleComplete(group.id);
+                      }}
+                      className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border-2 transition-all cursor-pointer ${
+                        isItemDone ? "bg-emerald-500 border-emerald-500" : "border-slate-300 dark:border-slate-600"
+                      }`}
+                    >
+                      {isItemDone && <CheckCircle2 className="w-3 h-3 text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-xs font-semibold block truncate ${isItemDone ? "text-emerald-700 dark:text-emerald-400 line-through" : "text-slate-600 dark:text-slate-400"}`}>
+                        {meta.label}
+                      </span>
+                    </div>
                   </div>
                 );
               })}

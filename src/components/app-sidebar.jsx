@@ -22,7 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Activity, Calendar, LayoutDashboard, Settings, Users, UserPlus, Pill, Bed, FileText, ChevronDown, HeartPulse, LogOut, CalendarX2, CheckCheck, ChartColumnIncreasing } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const ROLES = {
   admin: {
@@ -70,6 +70,32 @@ const ROLES = {
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const [standardUser, setStandardUser] = useState({
+    id: "WF001",
+    name: "Dr. Rajesh Sharma",
+    designation: "Senior Consultant",
+    speciality: "Interventional Cardiology"
+  });
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem("current_standard_user");
+    if (savedUser) {
+      const parsed = JSON.parse(savedUser);
+      // Migrate older saved data that may not have id field
+      if (!parsed.id) parsed.id = "WF001";
+      setStandardUser(parsed);
+      localStorage.setItem("current_standard_user", JSON.stringify(parsed));
+    } else {
+      const defaultUser = {
+        id: "WF001",
+        name: "Dr. Rajesh Sharma",
+        designation: "Senior Consultant",
+        speciality: "Interventional Cardiology"
+      };
+      localStorage.setItem("current_standard_user", JSON.stringify(defaultUser));
+      setStandardUser(defaultUser);
+    }
+  }, []);
 
   // Detect role from current URL path
   let currentRole = "admin"; // default = HR Head
@@ -78,7 +104,11 @@ export function AppSidebar() {
   else if (pathname.startsWith("/dept-head")) currentRole = "supervisor";
   else if (pathname.startsWith("/user")) currentRole = "user";
 
-  const currentRoleData = ROLES[currentRole];
+  let currentRoleData = { ...ROLES[currentRole] };
+  if (currentRole === "user") {
+    currentRoleData.userName = standardUser.name;
+    currentRoleData.label = standardUser.designation;
+  }
 
   return (
     <Sidebar collapsible="icon" className="border-none bg-transparent pt-3 pl-3 pb-3">
@@ -151,10 +181,10 @@ export function AppSidebar() {
                     className={`rounded-xl cursor-pointer px-3 py-2 flex flex-col items-start gap-0.5 transition-colors ${currentRole === roleKey ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
                   >
                     <span className={`text-sm font-bold ${currentRole === roleKey ? 'text-blue-700' : 'text-slate-700 dark:text-slate-200'}`}>
-                      {ROLES[roleKey].userName}
+                      {roleKey === "user" ? standardUser.name : ROLES[roleKey].userName}
                     </span>
                     <span className={`text-[10px] font-medium ${currentRole === roleKey ? 'text-blue-500' : 'text-slate-500'}`}>
-                      {ROLES[roleKey].label}
+                      {roleKey === "user" ? standardUser.designation : ROLES[roleKey].label}
                     </span>
                   </DropdownMenuItem>
                 </Link>

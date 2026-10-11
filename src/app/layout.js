@@ -9,6 +9,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Navbar } from "@/components/Navbar";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ToastProvider } from "@/components/ToastProvider";
 
 export default function RootLayout({ children }) {
   return (
@@ -27,21 +28,23 @@ export default function RootLayout({ children }) {
           enableSystem
           disableTransitionOnChange
         >
-          <SidebarProvider style={{ "--sidebar-width-icon": "6.5rem", "--sidebar-width": "18rem" }}>
-            <div className="flex h-screen w-full overflow-hidden bg-[#f4f7fa] dark:bg-[#0f172a]">
-              <AppSidebar />
-              <div className="flex flex-1 flex-col overflow-hidden relative">
-                <div className="p-3 md:px-4 md:pt-3 pb-0">
-                  <Navbar />
-                </div>
-                <main className="flex-1 flex flex-col overflow-y-auto p-3 md:p-4 pt-4 md:pt-4">
-                  <div className="w-full h-full flex flex-col animate-in fade-in zoom-in-95 duration-700 ease-out">
-                    {children}
+          <ToastProvider>
+            <SidebarProvider style={{ "--sidebar-width-icon": "6.5rem", "--sidebar-width": "18rem" }}>
+              <div className="flex h-screen w-full overflow-hidden bg-[#f4f7fa] dark:bg-[#0f172a]">
+                <AppSidebar />
+                <div className="flex flex-1 flex-col overflow-hidden relative">
+                  <div className="p-3 md:px-4 md:pt-3 pb-0">
+                    <Navbar />
                   </div>
-                </main>
+                  <main className="flex-1 flex flex-col overflow-y-auto p-3 md:p-4 pt-4 md:pt-4">
+                    <div className="w-full h-full flex flex-col animate-in fade-in zoom-in-95 duration-700 ease-out">
+                      {children}
+                    </div>
+                  </main>
+                </div>
               </div>
-            </div>
-          </SidebarProvider>
+            </SidebarProvider>
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>

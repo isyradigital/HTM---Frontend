@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { CourseCard } from "@/components/courses/CourseCard";
+import { useToast } from "@/components/ToastProvider";
 
 export const initialCourses = [
     { id: 1, title: "Junior Medical Programs", code: "MED-101", status: "Active", colorScheme: "blue", description: "For junior residents. Focus on fundamentals and core medical practices." },
@@ -33,27 +34,38 @@ export default function CoursesPage() {
         return () => window.removeEventListener("storage", loadCourses);
     }, []);
 
+    const toast = useToast();
+
     const handleEditCourse = (course) => {
         router.push(`/hr-head/courses/create?edit=${course.id}`);
     };
 
-    const handleDeleteCourse = (courseToDelete) => {
-        if (confirm(`Are you sure you want to delete "${courseToDelete.title}"?`)) {
-            // 1. Remove from localStorage created courses
-            const saved = JSON.parse(localStorage.getItem("hospital_courses") || "[]");
-            const updatedSaved = saved.filter(c => String(c.id) !== String(courseToDelete.id));
-            localStorage.setItem("hospital_courses", JSON.stringify(updatedSaved));
+    const handleDeleteCourse = async (courseToDelete) => {
+        const confirmed = await toast.confirm({
+            title: "Delete Course?",
+            message: `Are you sure you want to permanently delete "${courseToDelete.title}"? This action cannot be undone.`,
+            confirmText: "Delete Course",
+            cancelText: "Cancel",
+            type: "danger",
+        });
 
-            // 2. Track deleted demo courses so they don't reappear
-            if (initialCourses.some(c => String(c.id) === String(courseToDelete.id))) {
-                const deletedDemo = JSON.parse(localStorage.getItem("deleted_demo_courses") || "[]");
-                deletedDemo.push(courseToDelete.id);
-                localStorage.setItem("deleted_demo_courses", JSON.stringify(deletedDemo));
-            }
+        if (!confirmed) return;
 
-            // Update state
-            setCourses(prev => prev.filter(c => String(c.id) !== String(courseToDelete.id)));
+        // 1. Remove from localStorage created courses
+        const saved = JSON.parse(localStorage.getItem("hospital_courses") || "[]");
+        const updatedSaved = saved.filter(c => String(c.id) !== String(courseToDelete.id));
+        localStorage.setItem("hospital_courses", JSON.stringify(updatedSaved));
+
+        // 2. Track deleted demo courses so they don't reappear
+        if (initialCourses.some(c => String(c.id) === String(courseToDelete.id))) {
+            const deletedDemo = JSON.parse(localStorage.getItem("deleted_demo_courses") || "[]");
+            deletedDemo.push(courseToDelete.id);
+            localStorage.setItem("deleted_demo_courses", JSON.stringify(deletedDemo));
         }
+
+        // Update state
+        setCourses(prev => prev.filter(c => String(c.id) !== String(courseToDelete.id)));
+        toast.success(`"${courseToDelete.title}" has been deleted.`, { title: "Course Deleted" });
     };
 
     const filteredCourses = courses.filter(

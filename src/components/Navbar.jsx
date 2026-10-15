@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { NotificationBell } from "@/components/notifications";
 
 export function Navbar() {
   const { theme, setTheme } = useTheme();
@@ -74,10 +75,9 @@ export function Navbar() {
           <button className="relative rounded-full p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
             <Globe className="h-5 w-5" />
           </button>
-          <button className="relative rounded-full p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white"></span>
-          </button>
+          
+          {/* Global Realtime Notification Bell */}
+          <NotificationBell />
           
           <div className="flex items-center gap-3 cursor-pointer group ml-2">
             <Avatar className="h-10 w-10 shadow-sm">

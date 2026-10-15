@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Activity, Calendar, LayoutDashboard, Settings, Users, UserPlus, Pill, Bed, FileText, ChevronDown, HeartPulse, LogOut, CalendarX2, CheckCheck, ChartColumnIncreasing } from "lucide-react";
+import { Activity, Calendar, LayoutDashboard, Settings, Users, UserPlus, Pill, Bed, FileText, ChevronDown, HeartPulse, LogOut, CalendarX2, CheckCheck, ChartColumnIncreasing, Award } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -35,6 +35,7 @@ const ROLES = {
       { title: "Trainings", url: "/hr-head/training", icon: Users },
       { title: "Training Calendar", url: "/hr-head/training-calendar", icon: Calendar },
       { title: "Courses", url: "/hr-head/courses", icon: ChartColumnIncreasing },
+      { title: "Certification", url: "/hr-head/certification", icon: Award },
     ],
   },
   supervisor: {

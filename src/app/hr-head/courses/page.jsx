@@ -85,7 +85,7 @@ export default function CoursesPage() {
                     onActionClick={() => router.push("/hr-head/courses/create")}
                 />
 
-                {/* Simple search input on the top right for convenience */}
+                {/* Search */}
                 <div className="hidden md:block relative w-64">
                     <input
                         type="text"

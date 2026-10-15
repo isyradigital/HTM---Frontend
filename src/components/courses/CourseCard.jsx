@@ -1,8 +1,14 @@
 import React from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, Edit2, Trash2 } from "lucide-react";
+import { ArrowRight, BookOpen, Edit2, Trash2, Users } from "lucide-react";
 
-export function CourseCard({ course, colorScheme, onEdit, onDelete, hrefPrefix = "/hr-head/courses" }) {
+export function CourseCard({
+  course,
+  colorScheme,
+  onEdit,
+  onDelete,
+  hrefPrefix = "/hr-head/courses",
+}) {
   const colors = {
     blue: {
       bg: "bg-blue-100 dark:bg-blue-900/30",
@@ -35,7 +41,7 @@ export function CourseCard({ course, colorScheme, onEdit, onDelete, hrefPrefix =
       desc: "text-slate-600 dark:text-slate-400 group-hover:text-indigo-50 dark:group-hover:text-indigo-50 transition-colors",
       tagBg: "bg-white dark:bg-slate-800 group-hover:bg-indigo-700 dark:group-hover:bg-indigo-700 transition-colors",
       tagText: "text-indigo-600 dark:text-indigo-400 group-hover:text-white dark:group-hover:text-white transition-colors",
-    }
+    },
   };
 
   const theme = colors[colorScheme] || colors.blue;
@@ -45,61 +51,103 @@ export function CourseCard({ course, colorScheme, onEdit, onDelete, hrefPrefix =
     "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=800", // Medical student
     "https://images.unsplash.com/photo-1551076805-e18690c5e422?auto=format&fit=crop&q=80&w=800", // CPR
     "https://images.unsplash.com/photo-1581056771107-24ca5f033842?auto=format&fit=crop&q=80&w=800", // Ethics
-    "https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?auto=format&fit=crop&q=80&w=800", // Doctor 
+    "https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?auto=format&fit=crop&q=80&w=800", // Doctor
   ];
   const imageSrc = course.image || images[course.id % images.length];
   const router = useRouter();
 
+  const isHrHead = hrefPrefix.includes("hr-head");
+
   return (
     <div
       onClick={() => router.push(`${hrefPrefix}/${course.id}`)}
-      className={`relative group flex flex-col w-full h-[460px] rounded-[32px] ${theme.bg} ${theme.hoverBg} p-2 transition-all duration-300 hover:scale-[1.02] shadow-sm cursor-pointer`}
+      className={`relative group flex flex-col w-full h-[470px] rounded-[32px] ${theme.bg} ${theme.hoverBg} p-2 transition-all duration-300 hover:scale-[1.02] shadow-sm cursor-pointer`}
     >
-      {/* HR Actions (Edit/Delete) */}
-      {(onEdit || onDelete) && (
-        <div className="absolute top-6 right-6 flex items-center gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          {onEdit && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(course); }}
-              className="w-9 h-9 rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center text-blue-600 hover:bg-blue-600 hover:text-white transition-colors"
-            >
-              <Edit2 className="w-4 h-4" />
-            </button>
-          )}
-          {onDelete && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(course); }}
-              className="w-9 h-9 rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Top Content Area */}
       <div className="flex-1 px-5 py-6">
-        {/* Tags */}
+        {/* Top Badges and Actions */}
         <div className="flex items-center justify-between mb-5">
-          <div className="flex gap-2">
-            <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${theme.tagBg} ${theme.tagText}`}>
+          {/* Tags */}
+          <div className="flex items-center gap-2">
+            <span
+              className={`px-3 py-1.5 rounded-full text-xs font-bold ${theme.tagBg} ${theme.tagText}`}
+            >
               {course.code}
             </span>
-            <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${theme.tagBg} ${theme.tagText}`}>
+            <span
+              className={`px-3 py-1.5 rounded-full text-xs font-bold ${theme.tagBg} ${theme.tagText}`}
+            >
               {course.status}
             </span>
           </div>
-          <div className={`w-8 h-8 rounded-full ${theme.tagBg} flex items-center justify-center`}>
-            <BookOpen className={`w-4 h-4 ${theme.tagText}`} />
+
+          {/* Action Buttons: Tracking, Edit, Delete */}
+          <div className="flex items-center gap-1.5">
+            {/* Enrollment & Progress Tracking Icon (for HR Head) */}
+            {isHrHead && (
+              <button
+                type="button"
+                title="Enrollment & Progress Tracking"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/hr-head/courses/${course.id}/enrollments`);
+                }}
+                className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 shadow-sm transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95"
+              >
+                <Users className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Edit Course Icon */}
+            {onEdit && (
+              <button
+                type="button"
+                title="Edit Course"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(course);
+                }}
+                className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-400 hover:bg-purple-600 hover:text-white dark:hover:bg-purple-600 shadow-sm transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {/* Delete Course Icon */}
+            {onDelete && (
+              <button
+                type="button"
+                title="Delete Course"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(course);
+                }}
+                className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 text-rose-500 hover:bg-rose-500 hover:text-white dark:hover:bg-rose-600 shadow-sm transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {/* Default Book Icon if not HR Head */}
+            {!isHrHead && !onEdit && !onDelete && (
+              <div
+                className={`w-8 h-8 rounded-full ${theme.tagBg} flex items-center justify-center`}
+              >
+                <BookOpen className={`w-4 h-4 ${theme.tagText}`} />
+              </div>
+            )}
           </div>
         </div>
 
         {/* Text */}
-        <h3 className={`text-[28px] font-extrabold leading-tight tracking-tight mb-3 ${theme.text}`}>
+        <h3
+          className={`text-[28px] font-extrabold leading-tight tracking-tight mb-3 ${theme.text}`}
+        >
           {course.title}
         </h3>
         <p className={`text-sm font-medium ${theme.desc} line-clamp-2`}>
-          {course.description || "Comprehensive training module designed to enhance practical skills and theoretical knowledge."}
+          {course.description ||
+            "Comprehensive training module designed to enhance practical skills and theoretical knowledge."}
         </p>
       </div>
 

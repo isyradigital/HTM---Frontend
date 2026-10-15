@@ -10,6 +10,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Navbar } from "@/components/Navbar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/ToastProvider";
+import { NotificationProvider } from "@/components/NotificationProvider";
 
 export default function RootLayout({ children }) {
   return (
@@ -28,8 +29,9 @@ export default function RootLayout({ children }) {
           enableSystem
           disableTransitionOnChange
         >
-          <ToastProvider>
-            <SidebarProvider style={{ "--sidebar-width-icon": "6.5rem", "--sidebar-width": "18rem" }}>
+          <NotificationProvider>
+            <ToastProvider>
+              <SidebarProvider style={{ "--sidebar-width-icon": "6.5rem", "--sidebar-width": "18rem" }}>
               <div className="flex h-screen w-full overflow-hidden bg-[#f4f7fa] dark:bg-[#0f172a]">
                 <AppSidebar />
                 <div className="flex flex-1 flex-col overflow-hidden relative">
@@ -45,7 +47,8 @@ export default function RootLayout({ children }) {
               </div>
             </SidebarProvider>
           </ToastProvider>
-        </ThemeProvider>
+        </NotificationProvider>
+      </ThemeProvider>
       </body>
     </html>
   );

@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { loadVideoFromDB } from "@/lib/videoDB";
+import { updateStaffCourseProgress, enrollStaffInCourse, getEnrollments } from "@/lib/enrollmentService";
+import { useToast } from "@/components/ToastProvider";
 import {
   ArrowLeft, BookOpen, FileText, ImageIcon, Video,
   ListOrdered, HelpCircle, CheckCircle2, Circle, Users, Tag, FolderOpen,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Lock, Sparkles, GraduationCap, Award, ShieldCheck, AlertCircle
 } from "lucide-react";
 
 // ─── Same initial data as courses page (fallback for demo courses) ───────────
@@ -54,7 +56,7 @@ const DEMO_COURSES = [
 ];
 
 // ─── Progress Circle SVG ─────────────────────────────────────────────────────
-function ProgressCircle({ percent, size = 120, stroke = 10, color = "#2563eb" }) {
+function ProgressCircle({ percent, size = 120, stroke = 10, color = "#8b5cf6" }) {
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ - (percent / 100) * circ;
@@ -279,24 +281,103 @@ function ContentBlock({ item, index, isCompleted, onToggle }) {
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function CourseViewPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { id } = useParams();
 
   const [course, setCourse] = useState(null);
+  const [activeUser, setActiveUser] = useState({ id: "hr_head", role: "hr-head", name: "HR Head", department: "Administration", designation: "HR Head" });
   const [completed, setCompleted] = useState({}); // { blockId: true/false }
   const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
   const [expandedSections, setExpandedSections] = useState({});
+  const [isEnrolled, setIsEnrolled] = useState(true);
+  const toast = useToast();
 
+  // Detect current active user based on URL and current_standard_user localStorage
   useEffect(() => {
+    let user = { id: "hr_head", role: "hr-head", name: "HR Head", department: "Administration", designation: "HR Head" };
+    if (pathname?.startsWith("/user")) {
+      try {
+        const saved = localStorage.getItem("current_standard_user");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          user = { 
+            id: parsed.id || "WF001", 
+            role: "user", 
+            name: parsed.name || "Dr. Rajesh Sharma",
+            department: parsed.department || "Cardiology",
+            designation: parsed.designation || "Senior Consultant"
+          };
+        } else {
+          user = { 
+            id: "WF001", 
+            role: "user", 
+            name: "Dr. Rajesh Sharma",
+            department: "Cardiology",
+            designation: "Senior Consultant"
+          };
+        }
+      } catch (e) {
+        user = { 
+          id: "WF001", 
+          role: "user", 
+          name: "Dr. Rajesh Sharma",
+          department: "Cardiology",
+          designation: "Senior Consultant"
+        };
+      }
+    } else if (pathname?.startsWith("/dept-head")) {
+      user = { id: "dept_head_icu", role: "dept-head", name: "Sarah Jenkins", department: "ICU", designation: "Dept Head (ICU)" };
+    }
+    setActiveUser(user);
+
     // Try localStorage first (published courses)
-    const saved = JSON.parse(localStorage.getItem("hospital_courses") || "[]");
-    const allCourses = [...DEMO_COURSES, ...saved];
+    const savedCourses = JSON.parse(localStorage.getItem("hospital_courses") || "[]");
+    const allCourses = [...DEMO_COURSES, ...savedCourses];
     const found = allCourses.find(c => String(c.id) === String(id));
     setCourse(found || null);
 
-    // Load completion progress
-    const progress = JSON.parse(localStorage.getItem(`course_progress_${id}`) || "{}");
+    // Check if user is enrolled (HR Head & Dept Head are always considered enrolled/unlocked)
+    if (user.role === "user") {
+      const allEnrollments = getEnrollments();
+      const userEnrolled = allEnrollments.some(
+        e => String(e.courseId) === String(id) && e.staffId === user.id
+      );
+      setIsEnrolled(userEnrolled);
+    } else {
+      setIsEnrolled(true);
+    }
+
+    // Load completion progress specifically for this active user
+    const userProgressKey = `course_progress_${user.id}_${id}`;
+    const progress = JSON.parse(localStorage.getItem(userProgressKey) || "{}");
     setCompleted(progress);
-  }, [id]);
+  }, [id, pathname]);
+
+  const handleEnrollCourse = () => {
+    if (!course) return;
+    const res = enrollStaffInCourse({
+      courseId: course.id,
+      courseTitle: course.title,
+      staff: {
+        id: activeUser.id,
+        name: activeUser.name,
+        department: activeUser.department || "Medical Department",
+        designation: activeUser.designation || "Staff Member"
+      },
+      totalModules: flattenedTimeline.length || 4
+    });
+
+    if (res.success || res.message?.includes("already enrolled")) {
+      setIsEnrolled(true);
+      toast.success(`You are now enrolled in "${course.title}". All features are unlocked!`, {
+        title: "Enrolled Successfully"
+      });
+      // Fire event so other components refresh live
+      window.dispatchEvent(new Event("storage"));
+    } else {
+      toast.error(res.message, { title: "Enrollment Failed" });
+    }
+  };
 
   const rawTimeline = course?.timeline || [];
 
@@ -376,7 +457,21 @@ export default function CourseViewPage() {
   const toggleComplete = (blockId) => {
     const updated = { ...completed, [blockId]: !completed[blockId] };
     setCompleted(updated);
-    localStorage.setItem(`course_progress_${id}`, JSON.stringify(updated));
+
+    // Save to user-specific progress key
+    const userProgressKey = `course_progress_${activeUser.id}_${id}`;
+    localStorage.setItem(userProgressKey, JSON.stringify(updated));
+
+    // Also update central enrollment progress for standard staff users
+    if (activeUser.role === "user" && activeUser.id) {
+      const completedCount = Object.values(updated).filter(Boolean).length;
+      updateStaffCourseProgress({
+        courseId: id,
+        staffId: activeUser.id,
+        completedModules: completedCount,
+        totalModules: flattenedTimeline.length || 1,
+      });
+    }
   };
 
   const toggleSection = (secId) => {
@@ -398,13 +493,88 @@ export default function CourseViewPage() {
     );
   }
 
+  // ── Enrollment Gate: Standard users who haven't enrolled see a locked screen ──
+  if (activeUser.role === "user" && !isEnrolled) {
+    return (
+      <div className="flex-1 flex flex-col w-full h-full overflow-hidden bg-transparent p-4 md:p-6">
+        {/* Header */}
+        <div className="shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <PageHeader title={course.title} description={course.description} />
+          <button onClick={() => router.back()} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-blue-400 hover:text-blue-600 transition-all shadow-sm shrink-0">
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
+        </div>
 
+        {/* Locked Content Preview */}
+        <div className="flex-1 flex flex-col items-center justify-center relative">
+          {/* Blurred background preview */}
+          <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden">
+            <div className="w-full h-full bg-gradient-to-br from-slate-100 via-blue-50 to-blue-100 dark:from-slate-900 dark:via-blue-950/30 dark:to-blue-950/20 opacity-60" />
+            <div className="absolute inset-0 backdrop-blur-sm" />
+          </div>
+
+          {/* Lock Gate Card */}
+          <div className="relative z-10 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-2xl shadow-blue-500/10 p-10 md:p-14 max-w-lg w-full mx-4 flex flex-col items-center text-center gap-6">
+            {/* Lock Icon */}
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-600/30">
+              <Lock className="w-9 h-9 text-white" />
+            </div>
+
+            {/* Course Badge */}
+            <div className="flex items-center gap-2 px-4 py-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-full border border-blue-100 dark:border-blue-800/50">
+              <GraduationCap className="w-3.5 h-3.5 text-blue-500" />
+              <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{course.code}</span>
+            </div>
+
+            {/* Text */}
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+                Enroll to Access This Course
+              </h2>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">
+                This course content is locked. Enroll in the program to unlock all modules, track your progress, and get certified.
+              </p>
+            </div>
+
+            {/* Course Stats Row */}
+            <div className="grid grid-cols-3 gap-4 w-full">
+              <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 text-center">
+                <p className="text-lg font-black text-slate-800 dark:text-white">{flattenedTimeline.length || "—"}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Modules</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 text-center">
+                <p className="text-lg font-black text-slate-800 dark:text-white">{course.status}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Status</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 text-center">
+                <p className="text-xs font-black text-slate-800 dark:text-white leading-tight">{course.designation || "All Staff"}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Target</p>
+              </div>
+            </div>
+
+            {/* Enroll Button */}
+            <button
+              onClick={handleEnrollCourse}
+              className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white font-black text-base rounded-2xl shadow-lg shadow-blue-600/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Sparkles className="w-5 h-5" />
+              Enroll Program
+            </button>
+
+            <p className="text-[11px] font-medium text-slate-400">
+              Enrolling as <span className="font-bold text-slate-600 dark:text-slate-300">{activeUser.name}</span> · {activeUser.department}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const total = flattenedTimeline.length;
   const doneCount = Object.values(completed).filter(Boolean).length;
   const percent = total > 0 ? Math.round((doneCount / total) * 100) : 0;
 
-  const PROGRESS_COLOR = percent === 100 ? "#10b981" : percent > 50 ? "#2563eb" : "#f59e0b";
+  const PROGRESS_COLOR = percent === 100 ? "#7c3aed" : percent > 50 ? "#8b5cf6" : "#f59e0b";
   const currentItem = flattenedTimeline[currentModuleIndex];
 
   return (
@@ -497,8 +667,8 @@ export default function CourseViewPage() {
             </p>
 
             {percent === 100 && (
-              <div className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl text-emerald-700 dark:text-emerald-400 text-sm font-bold">
-                <CheckCircle2 className="w-4 h-4" /> Completed!
+              <div className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/50 rounded-xl text-blue-700 dark:text-blue-400 text-sm font-bold">
+                <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Completed!
               </div>
             )}
           </div>
@@ -529,10 +699,10 @@ export default function CourseViewPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3 text-sm">
-                <Circle className="w-4 h-4 shrink-0" style={{ color: course.status === "Active" ? "#10b981" : "#f59e0b" }} />
+                <Circle className={`w-4 h-4 shrink-0 ${course.status === "Active" ? "text-blue-500" : "text-amber-500"}`} />
                 <div>
                   <p className="text-[10px] font-bold uppercase text-slate-400">Status</p>
-                  <p className={`font-bold ${course.status === "Active" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>{course.status}</p>
+                  <p className={`font-bold ${course.status === "Active" ? "text-blue-600 dark:text-blue-400" : "text-amber-600 dark:text-amber-400"}`}>{course.status}</p>
                 </div>
               </div>
             </div>
@@ -575,7 +745,7 @@ export default function CourseViewPage() {
                           }}
                           title="Mark Section Done"
                           className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border-2 transition-all cursor-pointer ${
-                            isSectionDone ? "bg-emerald-500 border-emerald-500" : "border-slate-300 dark:border-slate-600 hover:border-emerald-400"
+                            isSectionDone ? "bg-blue-500 border-blue-500" : "border-slate-300 dark:border-slate-600 hover:border-blue-400"
                           }`}
                         >
                           {isSectionDone && <CheckCircle2 className="w-3 h-3 text-white" />}
@@ -597,7 +767,7 @@ export default function CourseViewPage() {
                               {childItems.length} {childItems.length === 1 ? "item" : "items"}
                             </span>
                             {childItems.length > 0 && (
-                              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                              <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
                                 ({sectionCompletedCount}/{childItems.length})
                               </span>
                             )}
@@ -642,7 +812,7 @@ export default function CourseViewPage() {
                                     isChildActive
                                       ? "ring-2 ring-blue-500/40 bg-blue-50 dark:bg-blue-900/30"
                                       : isChildDone
-                                      ? "bg-emerald-50/60 dark:bg-emerald-950/20"
+                                      ? "bg-blue-50/60 dark:bg-blue-900/20"
                                       : "bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/50"
                                   }`}
                                 >
@@ -653,7 +823,7 @@ export default function CourseViewPage() {
                                       toggleComplete(child.id);
                                     }}
                                     className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 border-2 transition-all cursor-pointer ${
-                                      isChildDone ? "bg-emerald-500 border-emerald-500" : "border-slate-300 dark:border-slate-600 hover:border-emerald-400"
+                                      isChildDone ? "bg-blue-500 border-blue-500" : "border-slate-300 dark:border-slate-600 hover:border-blue-400"
                                     }`}
                                   >
                                     {isChildDone && <CheckCircle2 className="w-2.5 h-2.5 text-white" />}
@@ -694,7 +864,7 @@ export default function CourseViewPage() {
                       isItemActive
                         ? "ring-2 ring-blue-500/40 bg-blue-50/70 dark:bg-blue-900/30"
                         : isItemDone
-                        ? "bg-emerald-50/60 dark:bg-emerald-950/20"
+                        ? "bg-blue-50/60 dark:bg-blue-900/20"
                         : "bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/50"
                     }`}
                   >
@@ -704,13 +874,13 @@ export default function CourseViewPage() {
                         toggleComplete(group.id);
                       }}
                       className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border-2 transition-all cursor-pointer ${
-                        isItemDone ? "bg-emerald-500 border-emerald-500" : "border-slate-300 dark:border-slate-600"
+                        isItemDone ? "bg-blue-500 border-blue-500" : "border-slate-300 dark:border-slate-600 hover:border-blue-400"
                       }`}
                     >
                       {isItemDone && <CheckCircle2 className="w-3 h-3 text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className={`text-xs font-semibold block truncate ${isItemDone ? "text-emerald-700 dark:text-emerald-400 line-through" : "text-slate-600 dark:text-slate-400"}`}>
+                      <span className={`text-xs font-semibold block truncate ${isItemDone ? "text-blue-600 dark:text-blue-400 line-through" : "text-slate-600 dark:text-slate-400"}`}>
                         {meta.label}
                       </span>
                     </div>
@@ -719,6 +889,98 @@ export default function CourseViewPage() {
               })}
             </div>
           </div>
+
+          {/* ── Certificate Apply Provision (Standard Users only) ── */}
+          {activeUser.role === "user" && (
+            <div className={`rounded-[2rem] border shadow-lg p-5 shrink-0 transition-all duration-500 ${
+              percent === 100
+                ? "bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-slate-900 border-blue-200 dark:border-blue-800/50 shadow-blue-500/10"
+                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-blue-500/5"
+            }`}>
+              {/* Card Header */}
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-500 ${
+                  percent === 100
+                    ? "bg-blue-500 shadow-md shadow-blue-500/30"
+                    : "bg-slate-100 dark:bg-slate-800"
+                }`}>
+                  <Award className={`w-4 h-4 transition-colors duration-300 ${percent === 100 ? "text-white" : "text-slate-400"}`} />
+                </div>
+                <div>
+                  <h3 className={`font-bold text-sm transition-colors duration-300 ${percent === 100 ? "text-blue-700 dark:text-blue-400" : "text-slate-800 dark:text-white"}`}>
+                    Certificate
+                  </h3>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Course Completion
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Indicator */}
+              {percent === 100 ? (
+                <div className="flex items-center gap-2 px-3 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl mb-4">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <p className="text-[11px] font-bold text-blue-700 dark:text-blue-400">
+                    You've completed this course!
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl mb-4">
+                  <AlertCircle className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Complete all {total} modules to unlock your certificate.
+                  </p>
+                </div>
+              )}
+
+              {/* Progress mini bar */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Progress</span>
+                  <span className={`text-[11px] font-black ${
+                    percent === 100 ? "text-blue-600 dark:text-blue-400" : "text-slate-600 dark:text-slate-300"
+                  }`}>{percent}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 bg-blue-500`}
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Apply Button */}
+              <button
+                disabled={percent < 100}
+                onClick={() => {
+                  if (percent === 100) {
+                    // Placeholder — user will define what happens next
+                    // For now show a toast / store the intent
+                    toast.success(`Certificate application submitted for "${course.title}".`, {
+                      title: "Application Received"
+                    });
+                  }
+                }}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm transition-all duration-300 ${
+                  percent === 100
+                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed"
+                }`}
+              >
+                {percent === 100 ? (
+                  <><Award className="w-4 h-4" /> Apply for Certificate</>
+                ) : (
+                  <><Lock className="w-4 h-4" /> Apply for Certificate</>
+                )}
+              </button>
+
+              {percent < 100 && (
+                <p className="text-center text-[10px] text-slate-400 mt-2 font-medium">
+                  {doneCount}/{total} modules done · {100 - percent}% remaining
+                </p>
+              )}
+            </div>
+          )}
 
         </div>
       </div>

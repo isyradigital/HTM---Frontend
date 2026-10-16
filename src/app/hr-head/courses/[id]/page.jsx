@@ -9,8 +9,9 @@ import { useToast } from "@/components/ToastProvider";
 import {
   ArrowLeft, BookOpen, FileText, ImageIcon, Video,
   ListOrdered, HelpCircle, CheckCircle2, Circle, Users, Tag, FolderOpen,
-  ChevronDown, ChevronUp, Lock, Sparkles, GraduationCap, Award, ShieldCheck, AlertCircle
+  ChevronDown, ChevronUp, Lock, Sparkles, GraduationCap, Award, ShieldCheck, AlertCircle, Clock, ExternalLink
 } from "lucide-react";
+import { getCertifications, createCertification } from "@/lib/certificationService";
 
 // ─── Same initial data as courses page (fallback for demo courses) ───────────
 const DEMO_COURSES = [
@@ -890,97 +891,194 @@ export default function CourseViewPage() {
             </div>
           </div>
 
-          {/* ── Certificate Apply Provision (Standard Users only) ── */}
-          {activeUser.role === "user" && (
-            <div className={`rounded-[2rem] border shadow-lg p-5 shrink-0 transition-all duration-500 ${
-              percent === 100
-                ? "bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-slate-900 border-blue-200 dark:border-blue-800/50 shadow-blue-500/10"
-                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-blue-500/5"
-            }`}>
-              {/* Card Header */}
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-500 ${
-                  percent === 100
-                    ? "bg-blue-500 shadow-md shadow-blue-500/30"
-                    : "bg-slate-100 dark:bg-slate-800"
+          {/* ── Certificate Section (Connected to Course & Linked Certificates) ── */}
+          {(() => {
+            // Find linked certificate details
+            const allCerts = getCertifications();
+            const linkedCertIds = course?.certificateIds || (course?.certificateId ? [course.certificateId] : []);
+            const linkedCerts = allCerts.filter(c => linkedCertIds.includes(c.id));
+            
+            // Check if user already applied or has this certificate
+            const userCertificate = allCerts.find(c => 
+              (String(c.courseId) === String(course?.id) || (c.courseTitle && course?.title && c.courseTitle.toLowerCase() === course.title.toLowerCase())) &&
+              (c.staffId === activeUser.id || (c.staffName && c.staffName.toLowerCase() === activeUser.name?.toLowerCase()))
+            );
+
+            const isPendingApproval = userCertificate && (!userCertificate.approvalStatus || userCertificate.approvalStatus === "Pending");
+            const isApproved = userCertificate && userCertificate.approvalStatus === "Approved";
+            const canApply = percent === 100 && !userCertificate;
+
+            const handleApplyForCertificate = () => {
+              if (percent < 100) {
+                toast.warning("Please complete all course modules first.", { title: "Course Incomplete" });
+                return;
+              }
+
+              // Create certification request in pending approval state for HR/Dept Head
+              const baseCert = linkedCerts[0] || {};
+              const todayStr = new Date().toISOString().split("T")[0];
+              
+              // Calculate 1 Year default expiry
+              const expDate = new Date();
+              expDate.setFullYear(expDate.getFullYear() + 1);
+              const expDateStr = expDate.toISOString().split("T")[0];
+
+              const newCert = createCertification({
+                courseId: course.id,
+                courseTitle: course.title,
+                courseCode: course.code || "MED-101",
+                staffId: activeUser.id,
+                staffName: activeUser.name,
+                department: activeUser.department || "Cardiology",
+                designation: activeUser.designation || "Senior Consultant",
+                category: course.designation || "Clinical Competency",
+                validity: baseCert.validity || "1 Year",
+                validitySubtext: `Issued ${todayStr}`,
+                issueDate: todayStr,
+                expiryDate: baseCert.expiryDate || expDateStr,
+                footnote: `Valid until ${baseCert.expiryDate || expDateStr}`,
+                description: `Hospital accredited qualification in "${course.title}" completed and submitted for clinical compliance approval.`,
+                features: [
+                  `Course Completion: ${course.title} (${course.code || "MED"})`,
+                  `Recipient: ${activeUser.name} (${activeUser.designation})`,
+                  `Clinical Department: ${activeUser.department}`,
+                  "Hospital Protocol Compliance Passed"
+                ],
+                status: "Pending",
+                approvalStatus: "Pending",
+                appliedAt: todayStr,
+                isCourseCompletionRequest: true,
+                template: baseCert.template || "classic"
+              });
+
+              toast.success(`Application submitted! HR Head has been notified in Certificate Tracker under Approvals.`, {
+                title: "Certificate Applied"
+              });
+
+              // Dispatch event to sync state across views
+              window.dispatchEvent(new Event("storage"));
+            };
+
+            return (
+              <div className={`rounded-[2rem] border shadow-lg p-5 shrink-0 transition-all duration-500 ${
+                isApproved
+                  ? "bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-slate-900 border-emerald-200 dark:border-emerald-800/50 shadow-emerald-500/10"
+                  : canApply
+                  ? "bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-slate-900 border-blue-200 dark:border-blue-800/50 shadow-blue-500/10"
+                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-blue-500/5"
+              }`}>
+                {/* Header */}
+                <div className="flex items-center justify-between gap-2.5 mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-500 ${
+                      isApproved
+                        ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/30"
+                        : canApply
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-500/30"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                    }`}>
+                      <Award className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-800 dark:text-white">
+                        Accredited Certificate
+                      </h3>
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                        Upon Completion
+                      </p>
+                    </div>
+                  </div>
+
+                  {isApproved ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                      Approved & Issued
+                    </span>
+                  ) : isPendingApproval ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                      Pending Approval
+                    </span>
+                  ) : null}
+                </div>
+
+                {/* Linked Certificate Name & Details */}
+                <div className={`p-3 rounded-xl border mb-3 transition-colors ${
+                  isApproved
+                    ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40"
+                    : canApply
+                    ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/40"
+                    : "bg-slate-50 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 opacity-80"
                 }`}>
-                  <Award className={`w-4 h-4 transition-colors duration-300 ${percent === 100 ? "text-white" : "text-slate-400"}`} />
-                </div>
-                <div>
-                  <h3 className={`font-bold text-sm transition-colors duration-300 ${percent === 100 ? "text-blue-700 dark:text-blue-400" : "text-slate-800 dark:text-white"}`}>
-                    Certificate
-                  </h3>
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                    Course Completion
+                  <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                    {linkedCerts.length > 0 ? linkedCerts.map(c => c.courseTitle).join(", ") : `${course?.title} Qualification Certificate`}
+                  </p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Awarded to: <strong className="text-slate-700 dark:text-slate-300">{activeUser.name}</strong> ({activeUser.designation})
                   </p>
                 </div>
-              </div>
 
-              {/* Status Indicator */}
-              {percent === 100 ? (
-                <div className="flex items-center gap-2 px-3 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl mb-4">
-                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <p className="text-[11px] font-bold text-blue-700 dark:text-blue-400">
-                    You've completed this course!
-                  </p>
+                {/* Progress bar */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Course Progress</span>
+                    <span className={`text-[11px] font-black ${percent === 100 ? "text-blue-600 dark:text-blue-400" : "text-slate-600 dark:text-slate-300"}`}>
+                      {percent}%
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700 bg-blue-600" style={{ width: `${percent}%` }} />
+                  </div>
                 </div>
-              ) : (
-                <div className="flex items-start gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl mb-4">
-                  <AlertCircle className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
-                    Complete all {total} modules to unlock your certificate.
-                  </p>
-                </div>
-              )}
 
-              {/* Progress mini bar */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Progress</span>
-                  <span className={`text-[11px] font-black ${
-                    percent === 100 ? "text-blue-600 dark:text-blue-400" : "text-slate-600 dark:text-slate-300"
-                  }`}>{percent}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-700 bg-blue-500`}
-                    style={{ width: `${percent}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Apply Button */}
-              <button
-                disabled={percent < 100}
-                onClick={() => {
-                  if (percent === 100) {
-                    // Placeholder — user will define what happens next
-                    // For now show a toast / store the intent
-                    toast.success(`Certificate application submitted for "${course.title}".`, {
-                      title: "Application Received"
-                    });
-                  }
-                }}
-                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm transition-all duration-300 ${
-                  percent === 100
-                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed"
-                }`}
-              >
-                {percent === 100 ? (
-                  <><Award className="w-4 h-4" /> Apply for Certificate</>
+                {/* Action Buttons based on state */}
+                {isApproved ? (
+                  <button
+                    type="button"
+                    onClick={() => router.push("/user/certification")}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition-all hover:-translate-y-0.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4" /> View Your Certificate
+                  </button>
+                ) : isPendingApproval ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 text-xs">
+                      <Clock className="w-4 h-4 shrink-0 text-amber-500 animate-pulse" />
+                      <span>Request sent to HR. Awaiting certificate approval.</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/user/certification")}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" /> Check Certification Page
+                    </button>
+                  </div>
                 ) : (
-                  <><Lock className="w-4 h-4" /> Apply for Certificate</>
+                  <div>
+                    <button
+                      disabled={!canApply}
+                      onClick={handleApplyForCertificate}
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm transition-all duration-300 ${
+                        canApply
+                          ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed border border-slate-200 dark:border-slate-700"
+                      }`}
+                    >
+                      {canApply ? (
+                        <><Award className="w-4 h-4" /> Apply for Certificate</>
+                      ) : (
+                        <><Lock className="w-4 h-4" /> Apply for Certificate</>
+                      )}
+                    </button>
+                    {!canApply && (
+                      <p className="text-center text-[10px] text-slate-400 mt-2 font-medium">
+                        Complete all {total} modules to enable application
+                      </p>
+                    )}
+                  </div>
                 )}
-              </button>
-
-              {percent < 100 && (
-                <p className="text-center text-[10px] text-slate-400 mt-2 font-medium">
-                  {doneCount}/{total} modules done · {100 - percent}% remaining
-                </p>
-              )}
-            </div>
-          )}
+              </div>
+            );
+          })()}
 
         </div>
       </div>

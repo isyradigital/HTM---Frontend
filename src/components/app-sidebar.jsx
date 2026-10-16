@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Activity, Calendar, LayoutDashboard, Settings, Users, UserPlus, Pill, Bed, FileText, ChevronDown, HeartPulse, LogOut, CalendarX2, CheckCheck, ChartColumnIncreasing, Award } from "lucide-react";
+import { Activity, Calendar, LayoutDashboard, Settings, Users, UserPlus, Pill, Bed, FileText, ChevronDown, HeartPulse, LogOut, CalendarX2, CheckCheck, ChartColumnIncreasing, Award, UserCheck, ClipboardCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -36,6 +36,7 @@ const ROLES = {
       { title: "Training Calendar", url: "/hr-head/training-calendar", icon: Calendar },
       { title: "Courses", url: "/hr-head/courses", icon: ChartColumnIncreasing },
       { title: "Certification", url: "/hr-head/certification", icon: Award },
+      { title: "Attendance", url: "/hr-head/attendance", icon: UserCheck },
     ],
   },
   supervisor: {
@@ -46,6 +47,7 @@ const ROLES = {
       { title: "Dashboard", url: "/dept-head/dashboard", icon: LayoutDashboard },
       { title: "Training Calendar", url: "/dept-head/training-calendar", icon: Calendar },
       { title: "Training requests", url: "/dept-head/training-requests", icon: CheckCheck },
+      { title: "Certification", url: "/dept-head/certification", icon: Award },
     ],
   },
   cardiology: {
@@ -55,6 +57,7 @@ const ROLES = {
     menus: [
       { title: "Dashboard", url: "/dept-head-cardiology/dashboard", icon: LayoutDashboard },
       { title: "Training Calendar", url: "/dept-head-cardiology/training-calendar", icon: Calendar },
+      { title: "Certification", url: "/dept-head-cardiology/certification", icon: Award },
     ],
   },
   user: {
@@ -65,6 +68,7 @@ const ROLES = {
       { title: "My Dashboard", url: "/user/dashboard", icon: LayoutDashboard },
       { title: "Trainings", url: "/user/training", icon: Calendar },
       { title: "Courses", url: "/user/courses", icon: ChartColumnIncreasing },
+      { title: "Certification", url: "/user/certification", icon: Award },
     ],
   },
 };

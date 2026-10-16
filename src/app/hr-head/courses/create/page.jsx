@@ -9,8 +9,9 @@ import { useToast } from "@/components/ToastProvider";
 import {
   ArrowLeft, FileText, ImageIcon, Video, HelpCircle, ListOrdered,
   GripVertical, Plus, Trash2, CheckCircle2, ChevronUp, ChevronDown,
-  BookOpen, Users, AlignLeft, Image as Img, FolderOpen
+  BookOpen, Users, AlignLeft, Image as Img, FolderOpen, Award, Check, ExternalLink, ShieldCheck
 } from "lucide-react";
+import { getCertifications } from "@/lib/certificationService";
 
 const DESIGNATIONS = [
   "All Designations", "Senior Consultant", "Medical Officer",
@@ -317,6 +318,16 @@ function CreateCourseContent() {
   const [expandedSections, setExpandedSections] = useState({});
   const [selectedId, setSelectedId] = useState(null);
 
+  // Certification Tab State
+  const [availableCertificates, setAvailableCertificates] = useState([]);
+  const [selectedCertificateIds, setSelectedCertificateIds] = useState([]);
+
+  useEffect(() => {
+    // Load available certificates from storage
+    const certs = getCertifications();
+    setAvailableCertificates(certs);
+  }, []);
+
   useEffect(() => {
     if (editId) {
       const saved = JSON.parse(localStorage.getItem("hospital_courses") || "[]");
@@ -329,6 +340,13 @@ function CreateCourseContent() {
           designation: found.designation || "",
           description: found.description || "",
         });
+
+        // Restore connected certificates if any
+        if (found.certificateIds && Array.isArray(found.certificateIds)) {
+          setSelectedCertificateIds(found.certificateIds);
+        } else if (found.certificateId) {
+          setSelectedCertificateIds([found.certificateId]);
+        }
 
         // Normalize loaded timeline (migrate flat timeline if needed)
         const rawTimeline = found.timeline || [];
@@ -516,6 +534,7 @@ function CreateCourseContent() {
     );
 
     const schemes = ["blue", "teal", "emerald", "indigo"];
+    const connectedCerts = availableCertificates.filter(c => selectedCertificateIds.includes(c.id));
     const newCourse = {
       id: editId ? Number(editId) : Date.now(),
       title: courseDetails.title,
@@ -526,6 +545,14 @@ function CreateCourseContent() {
       colorScheme: schemes[Math.floor(Math.random() * schemes.length)],
       timeline: processedTimeline,
       image: bannerImage || null, // ← banner image saved here
+      certificateIds: selectedCertificateIds,
+      connectedCertificates: connectedCerts.map(c => ({
+        id: c.id,
+        courseTitle: c.courseTitle,
+        certificateNo: c.certificateNo,
+        validity: c.validity,
+        category: c.category
+      }))
     };
 
     try {
@@ -574,7 +601,7 @@ function CreateCourseContent() {
 
           {/* Tab Bar */}
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 shrink-0">
-            <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-sm w-full max-w-sm">
+            <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-sm w-full max-w-md">
               <button onClick={() => setActiveTab("details")}
                 className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-lg transition-all ${activeTab === "details" ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-800 dark:hover:text-white"}`}>
                 <BookOpen className="w-3.5 h-3.5" /> Course Details
@@ -582,6 +609,15 @@ function CreateCourseContent() {
               <button onClick={() => setActiveTab("content")}
                 className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-lg transition-all ${activeTab === "content" ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-800 dark:hover:text-white"}`}>
                 <Plus className="w-3.5 h-3.5" /> Add Content
+              </button>
+              <button onClick={() => setActiveTab("certification")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-lg transition-all ${activeTab === "certification" ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-800 dark:hover:text-white"}`}>
+                <Award className="w-3.5 h-3.5" /> Certification
+                {selectedCertificateIds.length > 0 && (
+                  <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-full ${activeTab === "certification" ? "bg-white/20 text-white" : "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300"}`}>
+                    {selectedCertificateIds.length}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -847,6 +883,164 @@ function CreateCourseContent() {
               </div>
             )}
 
+            {/* ──────────── CERTIFICATION TAB ──────────── */}
+            {activeTab === "certification" && (
+              <div className="space-y-6 w-full">
+                
+                {/* Information Header Banner */}
+                <div className="p-5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/40 flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-blue-500/25">
+                      <Award className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                        Course Completion Certification
+                      </h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
+                        Select the accredited qualification certificate(s) that will be automatically awarded to staff upon completing all modules & assessments of this course.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => router.push("/hr-head/certification/create")}
+                    className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all shadow-xs shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Design New Certificate
+                  </button>
+                </div>
+
+                {/* Selected Summary Pill Bar */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Available Accredited Certificates ({availableCertificates.length})
+                    </span>
+                    {selectedCertificateIds.length > 0 && (
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
+                        {selectedCertificateIds.length} Linked to Course
+                      </span>
+                    )}
+                  </div>
+
+                  {selectedCertificateIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCertificateIds([])}
+                      className="text-xs font-bold text-slate-400 hover:text-red-500 transition-colors"
+                    >
+                      Clear Selection
+                    </button>
+                  )}
+                </div>
+
+                {/* Certificates Grid List */}
+                {availableCertificates.length === 0 ? (
+                  <div className="p-12 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
+                    <Award className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
+                    <div>
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No Certificates Found</p>
+                      <p className="text-xs text-slate-400 mt-1">Design a new certificate first to link with this course.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/hr-head/certification/create")}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20"
+                    >
+                      Create First Certificate
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {availableCertificates.map((cert) => {
+                      const isSelected = selectedCertificateIds.includes(cert.id);
+                      return (
+                        <div
+                          key={cert.id}
+                          onClick={() => {
+                            setSelectedCertificateIds(prev => 
+                              prev.includes(cert.id)
+                                ? prev.filter(id => id !== cert.id)
+                                : [...prev, cert.id]
+                            );
+                          }}
+                          className={`relative p-5 rounded-2xl border transition-all cursor-pointer select-none space-y-3 group ${
+                            isSelected
+                              ? "bg-blue-50/70 dark:bg-blue-950/30 border-blue-500 dark:border-blue-500 shadow-md shadow-blue-500/10"
+                              : "bg-white dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-2.5 min-w-0">
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                                isSelected
+                                  ? "bg-blue-600 text-white shadow-sm shadow-blue-500/30"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 group-hover:bg-blue-50 dark:group-hover:bg-blue-950/40 group-hover:text-blue-600"
+                              }`}>
+                                <Award className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <h5 className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                                  {cert.courseTitle}
+                                </h5>
+                                <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                  {cert.department || "Hospital Wide"} {cert.courseCode ? `· ${cert.courseCode}` : ""}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Checkbox Icon */}
+                            <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                              isSelected
+                                ? "bg-blue-600 text-white shadow-xs"
+                                : "border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 group-hover:border-blue-400"
+                            }`}>
+                              {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                            </div>
+                          </div>
+
+                          {/* Credential Details Pills */}
+                          <div className="flex items-center gap-2 flex-wrap pt-1 text-[10px]">
+                            <span className="font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                              Validity: {cert.validity || "1 Year"}
+                            </span>
+                            {cert.category && (
+                              <span className="font-semibold px-2 py-0.5 rounded-md bg-blue-100/70 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                                {cert.category}
+                              </span>
+                            )}
+                            {cert.certificateNo && (
+                              <span className="font-semibold px-2 py-0.5 rounded-md text-slate-400 dark:text-slate-500">
+                                ID: {cert.certificateNo}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Save guidance note */}
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span>Selected certificates are permanently saved with this course on publishing.</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={saveCourse}
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5 shrink-0"
+                  >
+                    Save & Publish Course
+                  </button>
+                </div>
+
+              </div>
+            )}
+
           </div>
         </div>
 
@@ -857,9 +1051,16 @@ function CreateCourseContent() {
             <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
               <ListOrdered className="w-4 h-4 text-blue-600" /> Course Timeline
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {timeline.reduce((acc, it) => acc + (it.type === "section" ? (it.children?.length || 0) : 1), 0)} content item{timeline.length !== 1 ? "s" : ""} across {timeline.filter(t => t.type === "section").length} chapter{timeline.filter(t => t.type === "section").length !== 1 ? "s" : ""}
-            </p>
+            <div className="flex items-center justify-between text-xs text-slate-500 mt-0.5 flex-wrap gap-1">
+              <span>
+                {timeline.reduce((acc, it) => acc + (it.type === "section" ? (it.children?.length || 0) : 1), 0)} content item{timeline.length !== 1 ? "s" : ""} across {timeline.filter(t => t.type === "section").length} chapter{timeline.filter(t => t.type === "section").length !== 1 ? "s" : ""}
+              </span>
+              {selectedCertificateIds.length > 0 && (
+                <span className="flex items-center gap-1 font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md text-[10px]">
+                  <Award className="w-3 h-3" /> {selectedCertificateIds.length} Cert Linked
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5 themed-scroll">

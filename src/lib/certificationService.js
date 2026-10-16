@@ -6,28 +6,28 @@ export const INITIAL_CERTIFICATES = [
     id: "CERT-MED-101",
     certificateNo: "HOSP-MED-2026-001",
     courseId: 1,
-    courseTitle: "Junior Medical Programs",
+    courseTitle: "Junior Medical Residency",
     courseCode: "MED-101",
     staffId: "WF001",
     staffName: "Dr. Rajesh Sharma",
     department: "Cardiology",
     designation: "Senior Consultant",
     category: "Clinical Care",
-    badgeLabel: "10%",
-    typeTag: "100% Complete",
-    validity: "0₽",
-    validitySubtext: "10% of budget",
-    footnote: "until you open an ad worth 10,000",
+    validity: "2 Years",
+    validitySubtext: "Clinical Credential",
+    footnote: "Valid until 2028-10-04",
     issueDate: "2026-10-04",
     expiryDate: "2028-10-04",
-    status: "Active", // "Active" | "Pending Approval" | "Expired" | "Revoked"
+    status: "Active",
     appliedAt: "2026-10-04",
-    approvedBy: "HR Department",
+    approvedBy: "Medical Council",
     score: 95,
+    description: "Accredited clinical residency competency in primary survey, bedside diagnostic protocols, and emergency cardio-pulmonary stabilization.",
     features: [
-      "Unlimited advertising",
-      "Pay as you use it",
-      "Any number of stores"
+      "Primary Patient Survey & ABCDE Triage",
+      "Core Inpatient Bedside Diagnostics",
+      "Standard Medico-Legal Documentation",
+      "Senior Consultant Escalation Pathways"
     ],
     verified: true,
     certificateUrl: "#"
@@ -36,28 +36,28 @@ export const INITIAL_CERTIFICATES = [
     id: "CERT-SUR-201",
     certificateNo: "HOSP-SUR-2026-002",
     courseId: 2,
-    courseTitle: "Advanced Surgical Programs",
+    courseTitle: "Advanced Surgical Operative",
     courseCode: "SUR-201",
     staffId: "WF003",
     staffName: "Dr. Anil Verma",
     department: "Orthopaedics",
     designation: "Consultant",
     category: "Surgery",
-    badgeLabel: "fix",
-    typeTag: "Mastery",
-    validity: "0₽",
-    validitySubtext: "20,000 P/month",
-    footnote: "until you open an ad worth 10,000",
+    validity: "3 Years",
+    validitySubtext: "Operative Privilege",
+    footnote: "Valid until 2029-09-18",
     issueDate: "2026-09-18",
     expiryDate: "2029-09-18",
     status: "Active",
     appliedAt: "2026-09-15",
-    approvedBy: "Chief Medical Officer",
+    approvedBy: "Surgical Governance Board",
     score: 98,
+    description: "Certified surgical competency in advanced laparoscopic procedures, intraoperative patient safety, and tissue management.",
     features: [
-      "Campaigns with a budget of up to RUB 1 million per month",
-      "SEO assistant",
-      "4 stores (API)"
+      "Advanced Laparoscopic Instrumentation",
+      "Intraoperative Hemostasis & Suturing",
+      "WHO Surgical Safety Checklist Compliance",
+      "Post-Operative Critical Care Rounds"
     ],
     verified: true,
     certificateUrl: "#"
@@ -66,27 +66,28 @@ export const INITIAL_CERTIFICATES = [
     id: "CERT-NUR-100",
     certificateNo: "HOSP-NUR-2026-003",
     courseId: 3,
-    courseTitle: "Adult Care Programs",
+    courseTitle: "Critical Care Nursing",
     courseCode: "NUR-100",
     staffId: "WF004",
     staffName: "Nurse Sunita Rao",
     department: "ICU",
     designation: "Senior Nurse",
     category: "Nursing",
-    badgeLabel: "Specialist",
-    typeTag: "Clinical",
     validity: "1 Year",
+    validitySubtext: "ICU Certified",
+    footnote: "Valid until 2027-10-10",
     issueDate: "2026-10-10",
     expiryDate: "2027-10-10",
     status: "Active",
     appliedAt: "2026-10-09",
     approvedBy: "Nursing Superintendent",
     score: 92,
+    description: "Certified proficiency in intensive care vital signs monitoring, invasive line maintenance, and critical medication administration.",
     features: [
-      "ICU Bedridden Repositioning Protocols",
-      "Hygiene & Medication Management",
-      "Pressure Ulcer Prevention Guidelines",
-      "Vital Signs Triage Escalation"
+      "Invasive Hemodynamic Monitoring",
+      "Mechanical Ventilation Airway Care",
+      "High-Alert IV Medication Protocols",
+      "Pressure Injury Triage & Prevention"
     ],
     verified: true,
     certificateUrl: "#"
@@ -95,33 +96,35 @@ export const INITIAL_CERTIFICATES = [
     id: "CERT-ER-500",
     certificateNo: "HOSP-ER-2026-004",
     courseId: 4,
-    courseTitle: "Emergency Protocols",
+    courseTitle: "Emergency Trauma Protocol",
     courseCode: "ER-500",
     staffId: "WF006",
     staffName: "Dr. Suresh Patil",
     department: "Emergency Medicine",
     designation: "Medical Officer",
     category: "Emergency",
-    badgeLabel: "Critical",
-    typeTag: "Life Support",
     validity: "2 Years",
+    validitySubtext: "Trauma Accredited",
+    footnote: "Valid until 2028-08-20",
     issueDate: "2026-08-20",
     expiryDate: "2028-08-20",
     status: "Active",
     appliedAt: "2026-08-18",
-    approvedBy: "Head of Emergency",
+    approvedBy: "Emergency Services Director",
     score: 90,
+    description: "Certified qualification in Advanced Trauma Life Support (ATLS), rapid sequence intubation, and disaster triage response.",
     features: [
-      "ABCDE Trauma Resuscitation Protocol",
-      "Immediate Triage Dispatch Control",
-      "Medico-Legal Real-time Case Documentation"
+      "Advanced Cardiac & Trauma Resuscitation",
+      "Rapid Sequence Intubation (RSI) Protocol",
+      "Mass Casualty Incident (MCI) Triage",
+      "Emergency Medico-Legal Case Recording"
     ],
     verified: true,
     certificateUrl: "#"
   }
 ];
 
-const STORAGE_KEY = "hospital_certifications";
+const STORAGE_KEY = "hospital_certifications_v2";
 
 export function getCertifications() {
   if (typeof window === "undefined") return INITIAL_CERTIFICATES;
@@ -132,11 +135,6 @@ export function getCertifications() {
       return INITIAL_CERTIFICATES;
     }
     const parsed = JSON.parse(data);
-    // If old schema without footnote, update with new INITIAL_CERTIFICATES
-    if (parsed.length > 0 && !parsed[0].footnote) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_CERTIFICATES));
-      return INITIAL_CERTIFICATES;
-    }
     return parsed;
   } catch (e) {
     console.error("Error reading certifications from storage:", e);
@@ -159,18 +157,18 @@ export function createCertification(certData) {
   const all = getCertifications();
   const newCert = {
     id: `CERT-${Date.now()}`,
-    certificateNo: `HOSP-${certData.courseCode || "GEN"}-${new Date().getFullYear()}-${String(all.length + 1).padStart(3, "0")}`,
+    certificateNo: `HOSP-${certData.courseCode || "MED"}-${new Date().getFullYear()}-${String(all.length + 1).padStart(3, "0")}`,
     appliedAt: new Date().toISOString().split("T")[0],
-    issueDate: new Date().toISOString().split("T")[0],
-    expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000 * 2).toISOString().split("T")[0], // 2 years default
+    issueDate: certData.issueDate || new Date().toISOString().split("T")[0],
+    expiryDate: certData.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000 * 2).toISOString().split("T")[0],
     status: certData.status || "Active",
-    badgeLabel: certData.badgeLabel || "Certified",
-    typeTag: certData.typeTag || "Standard",
-    validity: certData.validity || "2 Years",
+    validity: certData.validity || "1 Year",
+    validitySubtext: certData.validitySubtext || "Clinical Qualification",
+    footnote: certData.footnote || (certData.expiryDate ? `Valid until ${certData.expiryDate}` : "Hospital Verified"),
     features: certData.features || [
-      "Hospital Verified Curriculum",
-      "100% Course Modules Completed",
-      "Accredited Medical Training"
+      "Hospital Standard Safety Guidelines",
+      "Core Competency Assessment Passed",
+      "Clinical Protocol Compliance"
     ],
     verified: true,
     ...certData
@@ -181,9 +179,119 @@ export function createCertification(certData) {
   return newCert;
 }
 
+export function updateCertification(certId, updatedData) {
+  const all = getCertifications();
+  let updatedCert = null;
+  const updated = all.map(c => {
+    if (c.id === certId) {
+      updatedCert = { ...c, ...updatedData };
+      return updatedCert;
+    }
+    return c;
+  });
+  saveCertifications(updated);
+  return updatedCert;
+}
+
+export function deleteCertification(certId) {
+  const all = getCertifications();
+  const updated = all.filter(c => c.id !== certId);
+  saveCertifications(updated);
+  return updated;
+}
+
+export function renewCertification(certId, renewalData = {}) {
+  const all = getCertifications();
+  const target = all.find(c => c.id === certId);
+  if (!target) return null;
+
+  const today = new Date();
+  let expiry = "";
+  const validityPeriod = renewalData.validity || "1 Year";
+
+  if (validityPeriod === "3 Months") {
+    const d = new Date(today);
+    d.setMonth(d.getMonth() + 3);
+    expiry = d.toISOString().split("T")[0];
+  } else if (validityPeriod === "6 Months") {
+    const d = new Date(today);
+    d.setMonth(d.getMonth() + 6);
+    expiry = d.toISOString().split("T")[0];
+  } else if (validityPeriod === "1 Year") {
+    const d = new Date(today);
+    d.setFullYear(d.getFullYear() + 1);
+    expiry = d.toISOString().split("T")[0];
+  } else if (validityPeriod === "3 Years") {
+    const d = new Date(today);
+    d.setFullYear(d.getFullYear() + 3);
+    expiry = d.toISOString().split("T")[0];
+  } else if (validityPeriod === "Custom Date" && renewalData.customDate) {
+    expiry = renewalData.customDate;
+  } else if (renewalData.expiryDate) {
+    expiry = renewalData.expiryDate;
+  } else {
+    const d = new Date(today);
+    d.setFullYear(d.getFullYear() + 1);
+    expiry = d.toISOString().split("T")[0];
+  }
+
+  const issueDateStr = today.toISOString().split("T")[0];
+  
+  let finalValidity = validityPeriod;
+  if (validityPeriod === "Custom Date") {
+    if (expiry) {
+      const now = new Date();
+      now.setHours(0,0,0,0);
+      const targetDate = new Date(expiry);
+      targetDate.setHours(0,0,0,0);
+      const diffDays = Math.ceil((targetDate - now) / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) finalValidity = "Expired";
+      else if (diffDays === 0) finalValidity = "Expires Today";
+      else if (diffDays === 1) finalValidity = "1 Day";
+      else if (diffDays <= 90) finalValidity = `${diffDays} Days`;
+      else {
+        const months = Math.round(diffDays / 30);
+        if (months < 12) finalValidity = `${months} Months`;
+        else {
+          const years = (diffDays / 365).toFixed(1).replace(".0", "");
+          finalValidity = `${years} Year${years === "1" ? "" : "s"}`;
+        }
+      }
+    } else {
+      finalValidity = "Custom";
+    }
+  }
+
+  const renewedCert = {
+    ...target,
+    ...renewalData,
+    issueDate: issueDateStr,
+    expiryDate: expiry,
+    validity: finalValidity,
+    validitySubtext: `Renewed ${issueDateStr}`,
+    footnote: expiry ? `Valid until ${expiry}` : `Renewed ${finalValidity}`,
+    status: "Active",
+    renewalHistory: [
+      ...(target.renewalHistory || []),
+      {
+        renewedAt: issueDateStr,
+        previousExpiry: target.expiryDate,
+        newExpiry: expiry,
+        validity: finalValidity,
+        notes: renewalData.notes || "Accreditation renewal approved"
+      }
+    ]
+  };
+
+  const updated = all.map(c => c.id === certId ? renewedCert : c);
+  saveCertifications(updated);
+  return renewedCert;
+}
+
 export function updateCertificationStatus(certId, newStatus) {
   const all = getCertifications();
   const updated = all.map(c => c.id === certId ? { ...c, status: newStatus } : c);
   saveCertifications(updated);
   return updated;
 }
+
